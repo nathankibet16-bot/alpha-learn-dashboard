@@ -257,13 +257,21 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
       </button>
 
       <div className="flex items-center justify-between text-sm">
-        <button type="button" onClick={resend} className="text-emerald-500 hover:underline">
-          Resend code
+        <button
+          type="button"
+          onClick={resend}
+          disabled={cooldown > 0}
+          className="text-emerald-500 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+        >
+          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
         </button>
         <button type="button" onClick={() => setShowBypass(true)} className="text-muted-foreground hover:text-foreground">
           Didn't receive it?
         </button>
       </div>
+      <p className="text-center text-xs text-muted-foreground">
+        Don't see the email? Check your <span className="text-foreground">spam / junk</span> folder.
+      </p>
     </form>
   );
 }
