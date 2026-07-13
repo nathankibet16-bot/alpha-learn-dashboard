@@ -6,7 +6,7 @@ import { CryptoTicker } from "@/components/CryptoTicker";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { getBalance } from "@/lib/auth";
+import { getBalance, BALANCE_EVENT } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -33,6 +33,23 @@ function Dashboard() {
       setBal(getBalance(u.id));
     });
   }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.userId === user.id) setBal(detail.value);
+    };
+    window.addEventListener(BALANCE_EVENT, handler);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `alphatrader_balance_${user.id}` && e.newValue) setBal(Number(e.newValue));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(BALANCE_EVENT, handler);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [user]);
 
   if (!user) return null;
 
