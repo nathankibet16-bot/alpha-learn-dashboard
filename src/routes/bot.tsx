@@ -98,6 +98,7 @@ function BotPage() {
         toast(`Trade Closed: -$${loss.toFixed(2)}`);
       }
       incrementTradeCount(user.id);
+      void supabase.rpc("increment_my_trade_count");
     }, 45000);
 
     return () => {
