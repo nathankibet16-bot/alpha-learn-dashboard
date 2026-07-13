@@ -31,8 +31,16 @@ function Dashboard() {
       if (!u.email_confirmed_at) { navigate({ to: "/verify", replace: true }); return; }
       setUser(u);
       setBal(getBalance(u.id));
+      syncBalanceFromServer(u.id).then((v) => { if (v !== null) setBal(v); });
     });
   }, [navigate]);
+
+  // Poll server balance periodically so admin-approved deposits/withdrawals appear.
+  useEffect(() => {
+    if (!user) return;
+    const t = setInterval(() => { void syncBalanceFromServer(user.id); }, 15000);
+    return () => clearInterval(t);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
