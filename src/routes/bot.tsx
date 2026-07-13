@@ -95,6 +95,7 @@ function BotPage() {
         pushLog(`Trade Closed at loss — -$${loss.toFixed(2)}`);
         toast(`Trade Closed: -$${loss.toFixed(2)}`);
       }
+      incrementTradeCount(user.id);
     }, 45000);
 
     return () => {
@@ -109,17 +110,28 @@ function BotPage() {
 
   if (!ready) return null;
 
+  const firstName =
+    ((user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "")
+      .trim()
+      .split(/\s+/)[0] || null;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passkey.trim().toUpperCase() === BOT_PASSKEY) {
-      activateBot();
-      setActive(true);
+    if (isValidPasskey(passkey, firstName)) {
       setError(null);
-      toast.success("Bot activated — live trading session started");
+      setVerifying(true);
+      setTimeout(() => {
+        activateBot();
+        setActive(true);
+        setVerifying(false);
+        toast.success("Bot activated — live trading session started");
+      }, 900);
     } else {
-      setError("Invalid passkey. Please check and try again.");
+      setError("Invalid Bot Passkey. Please contact support or enter a valid activation code.");
+      setShakeKey((k) => k + 1);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground">
