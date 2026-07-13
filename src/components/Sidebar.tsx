@@ -19,6 +19,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const { isAdmin } = useIsAdmin();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -31,6 +32,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const name = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "Trader";
+  const links = isAdmin
+    ? ([...baseLinks, { to: "/admin", label: "Admin Dashboard", icon: ShieldCheck }] as const)
+    : baseLinks;
 
   return (
     <>
