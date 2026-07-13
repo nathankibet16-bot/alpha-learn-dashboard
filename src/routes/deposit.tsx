@@ -20,14 +20,10 @@ const PRESETS = [50, 100, 150, 200, 250, 300, 500];
 
 type Coin = { id: string; name: string; network: string; symbol: string; rate: number; address: string };
 const COINS: Coin[] = [
-  { id: "usdt-trc20", name: "Tether USDT", network: "TRC20", symbol: "USDT", rate: 1, address: "TXYZa8b3kQ2pR7nD1fM4vLg9eZ5cV6rHwK" },
-  { id: "usdt-erc20", name: "Tether USDT", network: "ERC20", symbol: "USDT", rate: 1, address: "0x8f3a2bC91eD7a1F5b6A4c9D2eE8fA6B3c4d5E6F7" },
-  { id: "btc", name: "Bitcoin", network: "BTC", symbol: "BTC", rate: 68420, address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" },
-  { id: "eth", name: "Ethereum", network: "ERC20", symbol: "ETH", rate: 3410, address: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B" },
-  { id: "sol", name: "Solana", network: "SOL", symbol: "SOL", rate: 168, address: "7vYq8sWZuS3fPqNZP9cN2ZQ5b4M8kJ6xL3eG1hR2A9" },
-  { id: "bnb", name: "BNB", network: "BEP20", symbol: "BNB", rate: 612, address: "0xBf9A7D2E4c5A1b6f3e9C8d0F2a4B5c6D7E8f9A0B" },
-  { id: "xrp", name: "Ripple", network: "XRP", symbol: "XRP", rate: 0.62, address: "rL4Kx9gVqR2m8bN3jZ7kW1fY5eC6dS8tHu" },
-  { id: "ltc", name: "Litecoin", network: "LTC", symbol: "LTC", rate: 88, address: "ltc1qzr8u5v6w2t9x7p3q4r5s6t7u8v9w0x1y2z3a4" },
+  { id: "usdt-bep20", name: "Tether USDT", network: "BEP20", symbol: "USDT", rate: 1, address: "0x273fc532e0FA69e2ABA54Db97dD3b324bb57C413" },
+  { id: "usdt-trc20", name: "Tether USDT", network: "TRC20", symbol: "USDT", rate: 1, address: "TDYjkNwL3rDcQCYY2CNtnzHVkDooLdm18P" },
+  { id: "usdt-sol", name: "Tether USDT", network: "Solana", symbol: "USDT", rate: 1, address: "8EPHpLpATRACgsr8gzgNbNXCkn3DYZjvK4yDEfNAtjsq" },
+  { id: "btc", name: "Bitcoin", network: "BTC", symbol: "BTC", rate: 68420, address: "18VcqpYQS93pHdAK19JNFrhyi7RqBBb1xy" },
 ];
 
 function DepositPage() {
