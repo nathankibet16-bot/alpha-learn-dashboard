@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut } from "lucide-react";
+import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/markets", label: "Markets", icon: LineChart },
+  { to: "/bot", label: "AI Trading Bot", icon: Bot },
+  { to: "/deposit", label: "Deposit", icon: ArrowDownToLine },
+  { to: "/withdraw", label: "Withdraw", icon: ArrowUpFromLine },
   { to: "/logs", label: "Analysis Logs", icon: ScrollText },
   { to: "/profile", label: "Profile", icon: UserCircle },
 ] as const;

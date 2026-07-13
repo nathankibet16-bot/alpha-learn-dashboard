@@ -6,7 +6,7 @@ import { CryptoTicker } from "@/components/CryptoTicker";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { getBalance, setBalance } from "@/lib/auth";
+import { getBalance } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -38,16 +38,8 @@ function Dashboard() {
 
   const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Trader";
 
-  const deposit = () => {
-    const next = balance + 5000;
-    setBalance(user.id, next);
-    setBal(next);
-  };
-  const withdraw = () => {
-    const next = Math.max(0, balance - 1000);
-    setBalance(user.id, next);
-    setBal(next);
-  };
+  const deposit = () => navigate({ to: "/deposit" });
+  const withdraw = () => navigate({ to: "/withdraw" });
 
   return (
     <div className="min-h-screen bg-zinc-950 text-foreground">
