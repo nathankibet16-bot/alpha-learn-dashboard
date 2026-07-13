@@ -1,5 +1,10 @@
+import { supabase } from "@/integrations/supabase/client";
+
 const BALANCE_KEY_PREFIX = "alphatrader_balance_";
 export const BALANCE_EVENT = "alphatrader:balance";
+
+// Local cache mirrors the profiles.balance value. Server (profiles table) is the source of truth;
+// the local mirror keeps the trading simulator responsive without an extra round-trip each tick.
 
 export function getBalance(userId: string): number {
   if (typeof window === "undefined") return 10000;
@@ -9,15 +14,34 @@ export function getBalance(userId: string): number {
   return Number.isFinite(n) ? n : 10000;
 }
 
-export function setBalance(userId: string, value: number) {
+function writeCache(userId: string, value: number) {
   if (typeof window === "undefined") return;
-  const next = Math.max(0, value);
+  const next = Math.max(0, Number(value.toFixed(2)));
   localStorage.setItem(BALANCE_KEY_PREFIX + userId, String(next));
   window.dispatchEvent(new CustomEvent(BALANCE_EVENT, { detail: { userId, value: next } }));
 }
 
+export function setBalance(userId: string, value: number) {
+  const next = Math.max(0, Number(value.toFixed(2)));
+  writeCache(userId, next);
+  void supabase.from("profiles").update({ balance: next }).eq("id", userId);
+}
+
 export function adjustBalance(userId: string, delta: number): number {
-  const next = Math.max(0, getBalance(userId) + delta);
+  const next = Math.max(0, Number((getBalance(userId) + delta).toFixed(2)));
   setBalance(userId, next);
   return next;
+}
+
+// Refresh from the server. Call on load or after admin-driven changes.
+export async function syncBalanceFromServer(userId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("balance")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const val = Number(data.balance);
+  writeCache(userId, val);
+  return val;
 }
