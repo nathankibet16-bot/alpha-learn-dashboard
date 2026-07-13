@@ -49,7 +49,7 @@ function VerifyPage() {
     setErr("");
     setMsg("");
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "email" });
+    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "signup" });
     setLoading(false);
     if (error) {
       setErr(error.message);

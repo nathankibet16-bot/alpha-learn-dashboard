@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { bypassVerifyEmail } from "@/lib/auth-actions.functions";
 import { BrandHeader, Field, inputCls } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -18,6 +20,7 @@ type Step = 1 | 2;
 
 function SignupPage() {
   const navigate = useNavigate();
+  const bypassFn = useServerFn(bypassVerifyEmail);
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -91,27 +94,165 @@ function SignupPage() {
           )}
 
           {step === 2 && (
-            <div className="text-center">
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-500/10">
-                <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-black">
-                  <Check className="h-8 w-8" strokeWidth={3} />
-                </div>
-              </div>
-              <h1 className="mt-5 font-display text-3xl font-bold">Check your email</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                We sent a verification code to <span className="text-foreground">{email}</span>. Enter it on the next screen to activate your account.
-              </p>
-              <button
-                onClick={() => navigate({ to: "/verify" })}
-                className="mt-6 w-full rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400"
-              >
-                Enter verification code
-              </button>
-            </div>
+            <OtpStep email={email} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showBypass, setShowBypass] = useState(false);
+  const [bypass, setBypass] = useState("");
+  const inputs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useEffect(() => {
+    inputs.current[0]?.focus();
+  }, []);
+
+  const code = digits.join("");
+
+  const setDigit = (i: number, v: string) => {
+    const clean = v.replace(/\D/g, "");
+    if (!clean) {
+      const next = [...digits];
+      next[i] = "";
+      setDigits(next);
+      return;
+    }
+    const next = [...digits];
+    // support paste of multi-digit into a single box
+    const chars = clean.slice(0, 6 - i).split("");
+    for (let k = 0; k < chars.length; k++) next[i + k] = chars[k];
+    setDigits(next);
+    const focusAt = Math.min(i + chars.length, 5);
+    inputs.current[focusAt]?.focus();
+  };
+
+  const onKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !digits[i] && i > 0) {
+      inputs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowLeft" && i > 0) {
+      inputs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowRight" && i < 5) {
+      inputs.current[i + 1]?.focus();
+    }
+  };
+
+  const verify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setErr("");
+    setMsg("");
+    if (code.length < 6) return;
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
+    setLoading(false);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    onDone();
+  };
+
+  const resend = async () => {
+    setErr("");
+    setMsg("");
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) setErr(error.message);
+    else setMsg("A new verification code has been sent.");
+  };
+
+  const useBypass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr("");
+    setMsg("");
+    setLoading(true);
+    try {
+      await bypassFn({ data: { code: bypass.trim() } });
+      await supabase.auth.refreshSession();
+      onDone();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "Invalid access code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showBypass) {
+    return (
+      <form onSubmit={useBypass} className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-500/10 text-emerald-500">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="font-display text-xl font-bold">Fallback access code</h1>
+            <p className="text-xs text-muted-foreground">Use if email is delayed</p>
+          </div>
+        </div>
+        <Field label="Access code">
+          <input value={bypass} onChange={(e) => setBypass(e.target.value)} placeholder="ALPHA-TRADER-CODE" className={inputCls + " uppercase tracking-widest"} required />
+        </Field>
+        {err && <p className="text-sm text-red-500">{err}</p>}
+        <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Unlock account
+        </button>
+        <button type="button" onClick={() => setShowBypass(false)} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
+          ← Back to code entry
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={verify} className="space-y-5">
+      <div className="text-center">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-500/10 text-emerald-500">
+          <ShieldCheck className="h-7 w-7" />
+        </div>
+        <h1 className="mt-4 font-display text-2xl font-bold">Enter verification code</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          We sent a 6-digit code to <span className="text-foreground">{email}</span>
+        </p>
+      </div>
+
+      <div className="flex justify-center gap-2">
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={(el) => { inputs.current[i] = el; }}
+            value={d}
+            onChange={(e) => setDigit(i, e.target.value)}
+            onKeyDown={(e) => onKeyDown(i, e)}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            className="h-14 w-12 rounded-lg border border-border bg-zinc-950 text-center font-display text-2xl font-bold text-foreground outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
+          />
+        ))}
+      </div>
+
+      {err && <p className="text-center text-sm text-red-500">{err}</p>}
+      {msg && <p className="text-center text-sm text-emerald-500">{msg}</p>}
+
+      <button disabled={loading || code.length < 6} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+        {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify & continue
+      </button>
+
+      <div className="flex items-center justify-between text-sm">
+        <button type="button" onClick={resend} className="text-emerald-500 hover:underline">
+          Resend code
+        </button>
+        <button type="button" onClick={() => setShowBypass(true)} className="text-muted-foreground hover:text-foreground">
+          Didn't receive it?
+        </button>
+      </div>
+    </form>
   );
 }
 
