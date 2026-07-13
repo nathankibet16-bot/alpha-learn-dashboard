@@ -1,16 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Menu, Bell, ArrowDownToLine, ArrowUpFromLine, BarChart3 } from "lucide-react";
+import { Menu, Bell, ArrowDownToLine, ArrowUpFromLine, LineChart } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { CryptoTicker } from "@/components/CryptoTicker";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Sidebar } from "@/components/Sidebar";
-import { getUser, setUser, type DemoUser } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { getBalance, setBalance } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — AlphaGroup Simulation" },
-      { name: "description", content: "Track your simulated crypto positions, demo balance, and educational market activity on AlphaGroup." },
+      { title: "Dashboard — Alpha Trader Group" },
+      { name: "description", content: "Track your Alpha Trader Group balance, deposits, withdrawals, and live crypto markets." },
     ],
   }),
   component: Dashboard,
@@ -19,28 +21,33 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [user, setLocalUser] = useState<DemoUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [balance, setBal] = useState(0);
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) navigate({ to: "/login" });
-    else setLocalUser(u);
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data.user;
+      if (!u) { navigate({ to: "/login", replace: true }); return; }
+      if (!u.email_confirmed_at) { navigate({ to: "/verify", replace: true }); return; }
+      setUser(u);
+      setBal(getBalance(u.id));
+    });
   }, [navigate]);
 
-  const topUp = () => {
-    if (!user) return;
-    const next = { ...user, balance: user.balance + 5000 };
-    setUser(next);
-    setLocalUser(next);
+  if (!user) return null;
+
+  const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Trader";
+
+  const deposit = () => {
+    const next = balance + 5000;
+    setBalance(user.id, next);
+    setBal(next);
   };
   const withdraw = () => {
-    if (!user) return;
-    const next = { ...user, balance: Math.max(0, user.balance - 1000) };
-    setUser(next);
-    setLocalUser(next);
+    const next = Math.max(0, balance - 1000);
+    setBalance(user.id, next);
+    setBal(next);
   };
-
-  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-foreground">
@@ -63,27 +70,27 @@ function Dashboard() {
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         <section>
           <p className="text-sm text-muted-foreground">
-            Good day, <span className="text-emerald-500">{user.name}</span>
+            Good day, <span className="text-emerald-500">{name}</span>
           </p>
 
           <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 shadow-2xl">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Current Demo Balance</p>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground">Current Balance</p>
                 <p className="mt-2 font-display text-4xl font-bold sm:text-5xl">
-                  ${user.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Simulated USD · educational use only</p>
+                <p className="mt-1 text-xs text-muted-foreground">USD · Alpha Trader Group account</p>
               </div>
               <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-500">
-                ● Live Sim
+                ● Active
               </span>
             </div>
 
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-              <QuickAction icon={<ArrowDownToLine className="h-5 w-5" />} label="Top Up Demo" onClick={topUp} variant="primary" />
-              <QuickAction icon={<ArrowUpFromLine className="h-5 w-5" />} label="Withdraw Simulation" onClick={withdraw} />
-              <QuickAction icon={<BarChart3 className="h-5 w-5" />} label="Live Charts" onClick={() => document.getElementById("charts")?.scrollIntoView({ behavior: "smooth" })} />
+              <QuickAction icon={<ArrowDownToLine className="h-5 w-5" />} label="Deposit" onClick={deposit} variant="primary" />
+              <QuickAction icon={<ArrowUpFromLine className="h-5 w-5" />} label="Withdraw" onClick={withdraw} />
+              <QuickAction icon={<LineChart className="h-5 w-5" />} label="Trade" onClick={() => document.getElementById("charts")?.scrollIntoView({ behavior: "smooth" })} />
             </div>
           </div>
         </section>
@@ -91,7 +98,7 @@ function Dashboard() {
         <section id="charts" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold">Market Charts</h2>
-            <span className="text-xs text-muted-foreground">Powered by TradingView · educational feed</span>
+            <span className="text-xs text-muted-foreground">Powered by TradingView</span>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <TradingViewChart symbol="BINANCE:BTCUSDT" title="Bitcoin · BTC/USDT" />
@@ -101,11 +108,6 @@ function Dashboard() {
             </div>
           </div>
         </section>
-
-        <footer className="pb-8 pt-4 text-center text-xs text-muted-foreground">
-          AlphaGroup is a paper-trading learning tool. All balances, charts, and activity shown are for
-          educational simulation only and do not constitute financial advice.
-        </footer>
       </main>
     </div>
   );

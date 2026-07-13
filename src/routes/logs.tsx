@@ -5,17 +5,17 @@ import { Sidebar } from "@/components/Sidebar";
 
 export const Route = createFileRoute("/logs")({
   head: () => ({
-    meta: [{ title: "Analysis Logs — AlphaGroup" }, { name: "description", content: "Educational analysis logs and simulated activity." }],
+    meta: [{ title: "Analysis Logs — Alpha Trader Group" }, { name: "description", content: "Recent analysis activity and trade notes." }],
   }),
   component: Logs,
 });
 
 const logs = [
-  { t: "2 min ago", msg: "Simulated BTC entry recorded at $67,120", type: "info" },
-  { t: "18 min ago", msg: "ETH paper position closed with +2.4% simulated gain", type: "up" },
-  { t: "1 hr ago", msg: "SOL demo trade closed with -1.1% simulated loss", type: "down" },
-  { t: "3 hr ago", msg: "Weekly education recap: volatility patterns explained", type: "info" },
-  { t: "Yesterday", msg: "Paper portfolio rebalanced across 4 assets", type: "info" },
+  { t: "2 min ago", msg: "BTC entry recorded at $67,120", type: "info" },
+  { t: "18 min ago", msg: "ETH position closed with +2.4% gain", type: "up" },
+  { t: "1 hr ago", msg: "SOL trade closed with -1.1% loss", type: "down" },
+  { t: "3 hr ago", msg: "Weekly recap: volatility patterns reviewed", type: "info" },
+  { t: "Yesterday", msg: "Portfolio rebalanced across 4 assets", type: "info" },
 ];
 
 function Logs() {

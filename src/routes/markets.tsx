@@ -6,7 +6,7 @@ import { CryptoTicker } from "@/components/CryptoTicker";
 
 export const Route = createFileRoute("/markets")({
   head: () => ({
-    meta: [{ title: "Markets — AlphaGroup Simulation" }, { name: "description", content: "Browse simulated crypto markets on AlphaGroup." }],
+    meta: [{ title: "Markets — Alpha Trader Group" }, { name: "description", content: "Live crypto markets on Alpha Trader Group." }],
   }),
   component: Markets,
 });

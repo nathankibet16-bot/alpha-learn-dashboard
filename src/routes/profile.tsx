@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, LogOut } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 import { Sidebar } from "@/components/Sidebar";
-import { getUser, setUser, type DemoUser } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { getBalance } from "@/lib/auth";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
-    meta: [{ title: "Profile — AlphaGroup" }, { name: "description", content: "Manage your AlphaGroup simulation profile." }],
+    meta: [{ title: "Profile — Alpha Trader Group" }, { name: "description", content: "Manage your Alpha Trader Group profile." }],
   }),
   component: Profile,
 });
@@ -14,15 +16,18 @@ export const Route = createFileRoute("/profile")({
 function Profile() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [user, setLocalUser] = useState<DemoUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) navigate({ to: "/login" });
-    else setLocalUser(u);
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) navigate({ to: "/login" });
+      else setUser(data.user);
+    });
   }, [navigate]);
 
   if (!user) return null;
+  const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Trader";
+  const balance = getBalance(user.id);
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -36,18 +41,18 @@ function Profile() {
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-6">
         <div className="rounded-2xl border border-border bg-card p-6 text-center">
           <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-500/20 text-2xl font-bold text-emerald-500">
-            {user.name[0]?.toUpperCase()}
+            {name[0]?.toUpperCase()}
           </div>
-          <p className="mt-3 font-display text-xl font-semibold">{user.name}</p>
+          <p className="mt-3 font-display text-xl font-semibold">{name}</p>
           <p className="text-sm text-muted-foreground">{user.email}</p>
-          <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">Demo balance</p>
-          <p className="font-display text-3xl font-bold">${user.balance.toLocaleString()}</p>
+          <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">Current Balance</p>
+          <p className="font-display text-3xl font-bold">${balance.toLocaleString()}</p>
         </div>
         <button
-          onClick={() => { setUser(null); navigate({ to: "/login" }); }}
+          onClick={async () => { await supabase.auth.signOut(); navigate({ to: "/login" }); }}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/20"
         >
-          <LogOut className="h-4 w-4" /> Sign out of simulation
+          <LogOut className="h-4 w-4" /> Sign out
         </button>
       </main>
     </div>

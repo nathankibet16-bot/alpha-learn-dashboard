@@ -1,6 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut } from "lucide-react";
-import { getUser, setUser } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,13 +14,19 @@ const links = [
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const user = getUser();
+  const [user, setUser] = useState<User | null>(null);
 
-  const logout = () => {
-    setUser(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     onClose();
     navigate({ to: "/login" });
   };
+
+  const name = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "Trader";
 
   return (
     <>
@@ -39,8 +47,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               α
             </div>
             <div>
-              <p className="font-display text-sm font-semibold leading-none">AlphaGroup</p>
-              <p className="text-xs text-emerald-500">Simulation Suite</p>
+              <p className="font-display text-sm font-semibold leading-none">Alpha Trader Group</p>
+              <p className="text-xs text-emerald-500">Trader Portal</p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 hover:bg-accent">
@@ -73,11 +81,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="border-t border-border p-4">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-full bg-emerald-500/20 text-emerald-500 font-semibold">
-              {user?.name?.[0]?.toUpperCase() ?? "A"}
+              {name[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium">{user?.name ?? "Demo User"}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.email ?? "demo@alphagroup.sim"}</p>
+              <p className="truncate text-sm font-medium">{name}</p>
+              <p className="truncate text-xs text-muted-foreground">{user?.email ?? ""}</p>
             </div>
             <button onClick={logout} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
               <LogOut className="h-4 w-4" />
