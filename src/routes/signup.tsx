@@ -167,11 +167,16 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
   };
 
   const resend = async () => {
+    if (cooldown > 0) return;
     setErr("");
     setMsg("");
     const { error } = await supabase.auth.resend({ type: "signup", email });
-    if (error) setErr(error.message);
-    else setMsg("A new verification code has been sent.");
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
+    setCooldown(60);
   };
 
   const useBypass = async (e: React.FormEvent) => {
