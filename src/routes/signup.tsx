@@ -109,11 +109,18 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
   const [loading, setLoading] = useState(false);
   const [showBypass, setShowBypass] = useState(false);
   const [bypass, setBypass] = useState("");
+  const [cooldown, setCooldown] = useState(60);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     inputs.current[0]?.focus();
   }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const code = digits.join("");
 
@@ -160,11 +167,16 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
   };
 
   const resend = async () => {
+    if (cooldown > 0) return;
     setErr("");
     setMsg("");
     const { error } = await supabase.auth.resend({ type: "signup", email });
-    if (error) setErr(error.message);
-    else setMsg("A new verification code has been sent.");
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
+    setCooldown(60);
   };
 
   const useBypass = async (e: React.FormEvent) => {
@@ -245,13 +257,21 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
       </button>
 
       <div className="flex items-center justify-between text-sm">
-        <button type="button" onClick={resend} className="text-emerald-500 hover:underline">
-          Resend code
+        <button
+          type="button"
+          onClick={resend}
+          disabled={cooldown > 0}
+          className="text-emerald-500 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+        >
+          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
         </button>
         <button type="button" onClick={() => setShowBypass(true)} className="text-muted-foreground hover:text-foreground">
           Didn't receive it?
         </button>
       </div>
+      <p className="text-center text-xs text-muted-foreground">
+        Don't see the email? Check your <span className="text-foreground">spam / junk</span> folder.
+      </p>
     </form>
   );
 }
