@@ -4,7 +4,7 @@ import { Menu, AlertTriangle, Bot, Lock } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { isBotActive } from "@/lib/bot-session";
+import { getTradeCount, TRADE_COUNT_EVENT } from "@/lib/bot-session";
 
 export const Route = createFileRoute("/withdraw")({
   head: () => ({
