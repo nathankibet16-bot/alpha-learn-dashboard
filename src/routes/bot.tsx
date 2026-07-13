@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, Activity } from "lucide-react";
+import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { BOT_PASSKEY, activateBot, isBotActive } from "@/lib/bot-session";
+import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
 import { adjustBalance, getBalance, BALANCE_EVENT } from "@/lib/auth";
 
 export const Route = createFileRoute("/bot")({
