@@ -1,19 +1,14 @@
-const KEY = "alphagroup_user";
+const BALANCE_KEY_PREFIX = "alphatrader_balance_";
 
-export type DemoUser = { name: string; email: string; balance: number };
-
-export function getUser(): DemoUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as DemoUser) : null;
-  } catch {
-    return null;
-  }
+export function getBalance(userId: string): number {
+  if (typeof window === "undefined") return 10000;
+  const raw = localStorage.getItem(BALANCE_KEY_PREFIX + userId);
+  if (raw == null) return 10000;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 10000;
 }
 
-export function setUser(u: DemoUser | null) {
+export function setBalance(userId: string, value: number) {
   if (typeof window === "undefined") return;
-  if (u) localStorage.setItem(KEY, JSON.stringify(u));
-  else localStorage.removeItem(KEY);
+  localStorage.setItem(BALANCE_KEY_PREFIX + userId, String(Math.max(0, value)));
 }
