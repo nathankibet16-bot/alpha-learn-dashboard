@@ -22,18 +22,28 @@ function WithdrawPage() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [active, setActive] = useState(false);
+  const [tradeCount, setTradeCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { navigate({ to: "/login", replace: true }); return; }
       setUser(data.user);
-      setActive(isBotActive());
+      setTradeCount(getTradeCount(data.user.id));
     });
   }, [navigate]);
 
+  useEffect(() => {
+    if (!user) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.userId === user.id) setTradeCount(detail.value);
+    };
+    window.addEventListener(TRADE_COUNT_EVENT, handler);
+    return () => window.removeEventListener(TRADE_COUNT_EVENT, handler);
+  }, [user]);
+
   if (!user) return null;
-  const locked = !active;
+  const locked = tradeCount < 1;
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground">
