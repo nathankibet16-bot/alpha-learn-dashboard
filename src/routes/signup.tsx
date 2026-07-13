@@ -109,11 +109,18 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
   const [loading, setLoading] = useState(false);
   const [showBypass, setShowBypass] = useState(false);
   const [bypass, setBypass] = useState("");
+  const [cooldown, setCooldown] = useState(60);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     inputs.current[0]?.focus();
   }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const code = digits.join("");
 
