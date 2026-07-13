@@ -9,18 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WithdrawRouteImport } from './routes/withdraw'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MarketsRouteImport } from './routes/markets'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DepositRouteImport } from './routes/deposit'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BotRouteImport } from './routes/bot'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const WithdrawRoute = WithdrawRouteImport.update({
+  id: '/withdraw',
+  path: '/withdraw',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyRoute = VerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -49,6 +56,11 @@ const LogsRoute = LogsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DepositRoute = DepositRouteImport.update({
+  id: '/deposit',
+  path: '/deposit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -81,12 +93,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bot': typeof BotRoute
   '/dashboard': typeof DashboardRoute
+  '/deposit': typeof DepositRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
   '/markets': typeof MarketsRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/withdraw': typeof WithdrawRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -94,12 +108,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bot': typeof BotRoute
   '/dashboard': typeof DashboardRoute
+  '/deposit': typeof DepositRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
   '/markets': typeof MarketsRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/withdraw': typeof WithdrawRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -108,12 +124,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bot': typeof BotRoute
   '/dashboard': typeof DashboardRoute
+  '/deposit': typeof DepositRoute
   '/login': typeof LoginRoute
   '/logs': typeof LogsRoute
   '/markets': typeof MarketsRoute
   '/profile': typeof ProfileRoute
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
+  '/withdraw': typeof WithdrawRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
 }
@@ -123,12 +141,14 @@ export interface FileRouteTypes {
     | '/'
     | '/bot'
     | '/dashboard'
+    | '/deposit'
     | '/login'
     | '/logs'
     | '/markets'
     | '/profile'
     | '/signup'
     | '/verify'
+    | '/withdraw'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -136,12 +156,14 @@ export interface FileRouteTypes {
     | '/'
     | '/bot'
     | '/dashboard'
+    | '/deposit'
     | '/login'
     | '/logs'
     | '/markets'
     | '/profile'
     | '/signup'
     | '/verify'
+    | '/withdraw'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   id:
@@ -149,12 +171,14 @@ export interface FileRouteTypes {
     | '/'
     | '/bot'
     | '/dashboard'
+    | '/deposit'
     | '/login'
     | '/logs'
     | '/markets'
     | '/profile'
     | '/signup'
     | '/verify'
+    | '/withdraw'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
   fileRoutesById: FileRoutesById
@@ -163,18 +187,27 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BotRoute: typeof BotRoute
   DashboardRoute: typeof DashboardRoute
+  DepositRoute: typeof DepositRoute
   LoginRoute: typeof LoginRoute
   LogsRoute: typeof LogsRoute
   MarketsRoute: typeof MarketsRoute
   ProfileRoute: typeof ProfileRoute
   SignupRoute: typeof SignupRoute
   VerifyRoute: typeof VerifyRoute
+  WithdrawRoute: typeof WithdrawRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/withdraw': {
+      id: '/withdraw'
+      path: '/withdraw'
+      fullPath: '/withdraw'
+      preLoaderRoute: typeof WithdrawRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify': {
       id: '/verify'
       path: '/verify'
@@ -215,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deposit': {
+      id: '/deposit'
+      path: '/deposit'
+      fullPath: '/deposit'
+      preLoaderRoute: typeof DepositRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -259,12 +299,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BotRoute: BotRoute,
   DashboardRoute: DashboardRoute,
+  DepositRoute: DepositRoute,
   LoginRoute: LoginRoute,
   LogsRoute: LogsRoute,
   MarketsRoute: MarketsRoute,
   ProfileRoute: ProfileRoute,
   SignupRoute: SignupRoute,
   VerifyRoute: VerifyRoute,
+  WithdrawRoute: WithdrawRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
 }
