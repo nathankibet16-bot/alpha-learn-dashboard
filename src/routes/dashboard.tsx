@@ -6,7 +6,7 @@ import { CryptoTicker } from "@/components/CryptoTicker";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { getBalance, setBalance } from "@/lib/auth";
+import { getBalance } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
