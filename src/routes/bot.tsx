@@ -45,6 +45,8 @@ function BotPage() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [verifying, setVerifying] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
   const logIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
