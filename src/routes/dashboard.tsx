@@ -6,7 +6,7 @@ import { CryptoTicker } from "@/components/CryptoTicker";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { getBalance, BALANCE_EVENT } from "@/lib/auth";
+import { getBalance, BALANCE_EVENT, syncBalanceFromServer } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -31,8 +31,16 @@ function Dashboard() {
       if (!u.email_confirmed_at) { navigate({ to: "/verify", replace: true }); return; }
       setUser(u);
       setBal(getBalance(u.id));
+      syncBalanceFromServer(u.id).then((v) => { if (v !== null) setBal(v); });
     });
   }, [navigate]);
+
+  // Poll server balance periodically so admin-approved deposits/withdrawals appear.
+  useEffect(() => {
+    if (!user) return;
+    const t = setInterval(() => { void syncBalanceFromServer(user.id); }, 15000);
+    return () => clearInterval(t);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;

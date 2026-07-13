@@ -61,9 +61,20 @@ function DepositPage() {
     if (!coin) return;
     setStep(3);
     setLoading(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
     await new Promise((r) => setTimeout(r, 1800));
     const cryptoAmt = (total / coin.rate).toFixed(coin.rate < 5 ? 2 : 6);
     const qr = await QRCode.toDataURL(coin.address, { margin: 1, width: 260, color: { dark: "#000000", light: "#ffffff" } });
+    if (user) {
+      await supabase.from("deposits").insert({
+        user_id: user.id,
+        user_email: user.email ?? null,
+        amount: total,
+        network: `${coin.symbol} · ${coin.network}`,
+        address: coin.address,
+      });
+    }
     setInvoice({
       id: "ATG-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
       total,

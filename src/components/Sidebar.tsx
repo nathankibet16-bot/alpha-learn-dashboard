@@ -1,10 +1,11 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/lib/admin";
 
-const links = [
+const baseLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/markets", label: "Markets", icon: LineChart },
   { to: "/bot", label: "AI Trading Bot", icon: Bot },
@@ -18,6 +19,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const { isAdmin } = useIsAdmin();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -30,6 +32,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   const name = (user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "Trader";
+  const links = isAdmin
+    ? ([...baseLinks, { to: "/admin", label: "Admin Dashboard", icon: ShieldCheck }] as const)
+    : baseLinks;
 
   return (
     <>

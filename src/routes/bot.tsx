@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, Activity } from "lucide-react";
+import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { BOT_PASSKEY, activateBot, isBotActive } from "@/lib/bot-session";
+import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
 import { adjustBalance, getBalance, BALANCE_EVENT } from "@/lib/auth";
 
 export const Route = createFileRoute("/bot")({
@@ -45,6 +45,8 @@ function BotPage() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [verifying, setVerifying] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
   const logIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -95,6 +97,8 @@ function BotPage() {
         pushLog(`Trade Closed at loss — -$${loss.toFixed(2)}`);
         toast(`Trade Closed: -$${loss.toFixed(2)}`);
       }
+      incrementTradeCount(user.id);
+      void supabase.rpc("increment_my_trade_count");
     }, 45000);
 
     return () => {
@@ -109,17 +113,28 @@ function BotPage() {
 
   if (!ready) return null;
 
+  const firstName =
+    ((user?.user_metadata?.full_name as string) || user?.email?.split("@")[0] || "")
+      .trim()
+      .split(/\s+/)[0] || null;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passkey.trim().toUpperCase() === BOT_PASSKEY) {
-      activateBot();
-      setActive(true);
+    if (isValidPasskey(passkey, firstName)) {
       setError(null);
-      toast.success("Bot activated — live trading session started");
+      setVerifying(true);
+      setTimeout(() => {
+        activateBot();
+        setActive(true);
+        setVerifying(false);
+        toast.success("Bot activated — live trading session started");
+      }, 900);
     } else {
-      setError("Invalid passkey. Please check and try again.");
+      setError("Invalid Bot Passkey. Please contact support or enter a valid activation code.");
+      setShakeKey((k) => k + 1);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground">
@@ -213,25 +228,41 @@ function BotPage() {
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
               <p className="text-sm font-medium">Enter Bot Passkey</p>
             </div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div key={shakeKey} className={`relative ${error ? "animate-shake" : ""}`}>
+              {verifying ? (
+                <LockOpen className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500 animate-success-pop" />
+              ) : (
+                <Lock className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${error ? "text-red-500" : "text-muted-foreground"}`} />
+              )}
               <input
                 type="password"
                 value={passkey}
-                onChange={(e) => setPasskey(e.target.value)}
+                onChange={(e) => { setPasskey(e.target.value); if (error) setError(null); }}
                 placeholder="Bot Passkey"
-                className="w-full rounded-lg border border-border bg-zinc-950 pl-10 pr-3 py-2.5 text-sm outline-none focus:border-emerald-500"
+                disabled={verifying}
+                className={`w-full rounded-lg border bg-zinc-950 pl-10 pr-3 py-2.5 text-sm outline-none transition-colors disabled:opacity-70 ${
+                  verifying ? "border-emerald-500" : error ? "border-red-500 focus:border-red-500" : "border-border focus:border-emerald-500"
+                }`}
                 required
               />
+              {verifying && (
+                <CheckCircle2 className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-emerald-500 animate-success-pop" />
+              )}
             </div>
             {error && <p className="text-xs text-red-500">{error}</p>}
-            <button type="submit" className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400">
-              Verify and Continue
+            {verifying && <p className="text-xs text-emerald-400">Passkey verified — starting live trading session...</p>}
+            <button
+              type="submit"
+              disabled={verifying}
+              className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {verifying ? "Verifying..." : "Verify and Continue"}
             </button>
             <p className="text-[11px] text-muted-foreground text-center">
               Passkey issued by your account manager.
             </p>
           </form>
+
         )}
       </main>
     </div>
