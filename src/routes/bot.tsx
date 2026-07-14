@@ -63,6 +63,8 @@ function BotPage() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
   const [sessionPnL, setSessionPnL] = useState(0);
+  const [amountInput, setAmountInput] = useState("");
+  const [tradeAmount, setTradeAmount] = useState<number | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [verifying, setVerifying] = useState(false);
