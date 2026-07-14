@@ -114,16 +114,19 @@ function BotPage() {
       const entry = Number((asset.base * (1 + drift)).toFixed(asset.base < 10 ? 4 : 2));
       const win = Math.random() < 0.88;
       const action: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
+      const stake = tradeAmount ?? 100;
       let profit: number;
       let price: number;
       if (win) {
-        profit = Number((10 + Math.random() * 22).toFixed(2));
+        const pct = 0.005 + Math.random() * 0.01; // 0.5% – 1.5%
+        profit = Number((stake * pct).toFixed(2));
         const moveDir = action === "BUY" ? 1 : -1;
         price = Number((entry * (1 + moveDir * 0.0035)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Successful — ${asset.symbol} +$${profit.toFixed(2)}`);
         toast.success(`Trade Successful: +$${profit.toFixed(2)}`);
       } else {
-        profit = -Number((1 + Math.random() * 3).toFixed(2));
+        const pct = 0.001 + Math.random() * 0.003; // 0.1% – 0.4%
+        profit = -Number((stake * pct).toFixed(2));
         const moveDir = action === "BUY" ? -1 : 1;
         price = Number((entry * (1 + moveDir * 0.0015)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Closed at loss — ${asset.symbol} $${profit.toFixed(2)}`);
