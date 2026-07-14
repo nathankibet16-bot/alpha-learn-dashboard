@@ -21,15 +21,18 @@ function writeCache(userId: string, value: number) {
   window.dispatchEvent(new CustomEvent(BALANCE_EVENT, { detail: { userId, value: next } }));
 }
 
-export function setBalance(userId: string, value: number) {
+export async function setBalance(userId: string, value: number): Promise<number> {
   const next = Math.max(0, Number(value.toFixed(2)));
   writeCache(userId, next);
-  void supabase.from("profiles").update({ balance: next }).eq("id", userId);
+  await supabase.from("profiles").update({ balance: next }).eq("id", userId);
+  // Re-dispatch after server confirms so any listener that polled in between resyncs.
+  writeCache(userId, next);
+  return next;
 }
 
 export function adjustBalance(userId: string, delta: number): number {
   const next = Math.max(0, Number((getBalance(userId) + delta).toFixed(2)));
-  setBalance(userId, next);
+  void setBalance(userId, next);
   return next;
 }
 

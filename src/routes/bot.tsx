@@ -63,6 +63,8 @@ function BotPage() {
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
   const [sessionPnL, setSessionPnL] = useState(0);
+  const [amountInput, setAmountInput] = useState("");
+  const [tradeAmount, setTradeAmount] = useState<number | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [verifying, setVerifying] = useState(false);
@@ -112,16 +114,19 @@ function BotPage() {
       const entry = Number((asset.base * (1 + drift)).toFixed(asset.base < 10 ? 4 : 2));
       const win = Math.random() < 0.88;
       const action: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
+      const stake = tradeAmount ?? 100;
       let profit: number;
       let price: number;
       if (win) {
-        profit = Number((10 + Math.random() * 22).toFixed(2));
+        const pct = 0.005 + Math.random() * 0.01; // 0.5% – 1.5%
+        profit = Number((stake * pct).toFixed(2));
         const moveDir = action === "BUY" ? 1 : -1;
         price = Number((entry * (1 + moveDir * 0.0035)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Successful — ${asset.symbol} +$${profit.toFixed(2)}`);
         toast.success(`Trade Successful: +$${profit.toFixed(2)}`);
       } else {
-        profit = -Number((1 + Math.random() * 3).toFixed(2));
+        const pct = 0.001 + Math.random() * 0.003; // 0.1% – 0.4%
+        profit = -Number((stake * pct).toFixed(2));
         const moveDir = action === "BUY" ? -1 : 1;
         price = Number((entry * (1 + moveDir * 0.0015)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Closed at loss — ${asset.symbol} $${profit.toFixed(2)}`);
@@ -172,8 +177,19 @@ function BotPage() {
   };
 
   const handleStart = () => {
+    const amt = Number(amountInput);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      toast.error("Enter a valid trade amount");
+      return;
+    }
+    if (amt > balance) {
+      toast.error("Amount exceeds current balance");
+      return;
+    }
+    setTradeAmount(amt);
     setRunning(true);
-    toast.success("Session started");
+    pushLog(`Trade amount set — $${amt.toFixed(2)}`);
+    toast.success(`Session started with $${amt.toFixed(2)}`);
   };
 
   const handleStop = () => {
@@ -189,6 +205,8 @@ function BotPage() {
     pushLog(`Session stopped — net ${sessionPnL >= 0 ? "+" : ""}$${sessionPnL.toFixed(2)} applied`);
     setSessionPnL(0);
     setTrades([]);
+    setTradeAmount(null);
+    setAmountInput("");
   };
 
   return (
@@ -261,6 +279,45 @@ function BotPage() {
                   </p>
                 </div>
               </div>
+
+              <div className="mt-4">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Trade Amount (USD)
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={running && tradeAmount ? tradeAmount.toFixed(2) : amountInput}
+                      onChange={(e) => setAmountInput(e.target.value)}
+                      disabled={running}
+                      placeholder="Enter amount to trade"
+                      className="w-full rounded-lg border border-border bg-zinc-950 pl-7 pr-3 py-2 text-sm outline-none focus:border-emerald-500 disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    {[25, 50, 100].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        disabled={running}
+                        onClick={() => setAmountInput(((balance * pct) / 100).toFixed(2))}
+                        className="rounded-md border border-border bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Max ${balance.toFixed(2)} · locked once session starts
+                </p>
+              </div>
+
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
