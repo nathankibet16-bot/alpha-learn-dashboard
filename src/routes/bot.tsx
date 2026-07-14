@@ -177,8 +177,19 @@ function BotPage() {
   };
 
   const handleStart = () => {
+    const amt = Number(amountInput);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      toast.error("Enter a valid trade amount");
+      return;
+    }
+    if (amt > balance) {
+      toast.error("Amount exceeds current balance");
+      return;
+    }
+    setTradeAmount(amt);
     setRunning(true);
-    toast.success("Session started");
+    pushLog(`Trade amount set — $${amt.toFixed(2)}`);
+    toast.success(`Session started with $${amt.toFixed(2)}`);
   };
 
   const handleStop = () => {
@@ -194,6 +205,8 @@ function BotPage() {
     pushLog(`Session stopped — net ${sessionPnL >= 0 ? "+" : ""}$${sessionPnL.toFixed(2)} applied`);
     setSessionPnL(0);
     setTrades([]);
+    setTradeAmount(null);
+    setAmountInput("");
   };
 
   return (
