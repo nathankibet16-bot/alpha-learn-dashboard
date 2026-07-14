@@ -280,6 +280,45 @@ function BotPage() {
                 </div>
               </div>
 
+              <div className="mt-4">
+                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Trade Amount (USD)
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={running && tradeAmount ? tradeAmount.toFixed(2) : amountInput}
+                      onChange={(e) => setAmountInput(e.target.value)}
+                      disabled={running}
+                      placeholder="Enter amount to trade"
+                      className="w-full rounded-lg border border-border bg-zinc-950 pl-7 pr-3 py-2 text-sm outline-none focus:border-emerald-500 disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    {[25, 50, 100].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        disabled={running}
+                        onClick={() => setAmountInput(((balance * pct) / 100).toFixed(2))}
+                        className="rounded-md border border-border bg-zinc-900 px-2 py-1 text-[10px] font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Max ${balance.toFixed(2)} · locked once session starts
+                </p>
+              </div>
+
+
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={handleStart}
