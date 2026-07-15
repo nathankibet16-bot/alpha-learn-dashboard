@@ -101,9 +101,27 @@ function DepositPage() {
 
   const reset = () => {
     setStep(1);
-    setAmount(100);
+    setAmount(MIN_AMOUNT);
     setSelected(null);
     setInvoice(null);
+  };
+
+  const markAlreadyPaid = async () => {
+    if (!invoice) return;
+    // Extract db id from tracking — we need to look up latest pending deposit for user
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    const { data: rows } = await supabase
+      .from("deposits")
+      .select("id, status")
+      .eq("user_id", userData.user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const depId = rows?.[0]?.id;
+    if (!depId) return;
+    await supabase.from("deposits").update({ status: "awaiting_confirmation" }).eq("id", depId);
+    setInvoiceStatus("awaiting_confirmation");
   };
 
   const copy = () => {
