@@ -35,7 +35,7 @@ function DepositPage() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [amount, setAmount] = useState<number>(100);
+  const [amount, setAmount] = useState<number>(20);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [invoice, setInvoice] = useState<null | { id: string; total: number; crypto: string; coin: Coin; qr: string }>(null);
