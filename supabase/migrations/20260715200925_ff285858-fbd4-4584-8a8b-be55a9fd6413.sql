@@ -1,0 +1,1 @@
+ALTER TYPE public.txn_status ADD VALUE IF NOT EXISTS 'awaiting_confirmation';
