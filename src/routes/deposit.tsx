@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
+import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNotificationEmail } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/deposit")({
   head: () => ({
@@ -28,6 +30,7 @@ const COINS: Coin[] = [
 
 function DepositPage() {
   const navigate = useNavigate();
+  const sendEmail = useServerFn(sendNotificationEmail);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -67,13 +70,22 @@ function DepositPage() {
     const cryptoAmt = (total / coin.rate).toFixed(coin.rate < 5 ? 2 : 6);
     const qr = await QRCode.toDataURL(coin.address, { margin: 1, width: 260, color: { dark: "#000000", light: "#ffffff" } });
     if (user) {
-      await supabase.from("deposits").insert({
+      const { data: inserted } = await supabase.from("deposits").insert({
         user_id: user.id,
         user_email: user.email ?? null,
         amount: total,
         network: `${coin.symbol} · ${coin.network}`,
         address: coin.address,
-      });
+      }).select("id").single();
+      if (inserted?.id) {
+        const name = (user.user_metadata?.full_name as string | undefined)?.split(" ")[0]
+          ?? user.email?.split("@")[0];
+        sendEmail({ data: {
+          template: "deposit-submitted",
+          data: { name, amount: total.toFixed(2), network: `${coin.symbol} · ${coin.network}`, address: coin.address },
+          idempotencyKey: `deposit-submitted-${inserted.id}`,
+        } }).catch(() => { /* non-blocking */ });
+      }
     }
     setInvoice({
       id: "ATG-" + Math.random().toString(36).slice(2, 10).toUpperCase(),

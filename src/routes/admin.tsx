@@ -2,9 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { Menu, ShieldCheck, Check, X, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/admin";
+import { sendNotificationEmail } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -61,12 +63,25 @@ function AdminPage() {
     void load();
   }, [loading, isAdmin, navigate, load]);
 
+  const sendEmail = useServerFn(sendNotificationEmail);
+
+  const firstName = (email: string | null) => (email?.split("@")[0] ?? "trader");
+
   const approveDeposit = async (id: string) => {
     setBusyId(id);
+    const dep = deposits.find((x) => x.id === id);
     const { error } = await supabase.rpc("admin_approve_deposit", { _deposit_id: id });
     setBusyId(null);
     if (error) { toast.error(error.message); return; }
     toast.success("Deposit approved — balance credited");
+    if (dep?.user_email) {
+      sendEmail({ data: {
+        template: "deposit-approved",
+        to: dep.user_email,
+        data: { name: firstName(dep.user_email), amount: Number(dep.amount).toFixed(2), network: dep.network },
+        idempotencyKey: `deposit-approved-${id}`,
+      } }).catch(() => {});
+    }
     void load();
   };
   const rejectDeposit = async (id: string) => {
@@ -79,18 +94,36 @@ function AdminPage() {
   };
   const approveWithdrawal = async (id: string) => {
     setBusyId(id);
+    const wd = withdrawals.find((x) => x.id === id);
     const { error } = await supabase.rpc("admin_approve_withdrawal", { _withdrawal_id: id });
     setBusyId(null);
     if (error) { toast.error(error.message); return; }
     toast.success("Withdrawal completed");
+    if (wd?.user_email) {
+      sendEmail({ data: {
+        template: "withdrawal-completed",
+        to: wd.user_email,
+        data: { name: firstName(wd.user_email), amount: Number(wd.amount).toFixed(2), network: wd.network, wallet: wd.wallet_address },
+        idempotencyKey: `withdrawal-completed-${id}`,
+      } }).catch(() => {});
+    }
     void load();
   };
   const rejectWithdrawal = async (id: string) => {
     setBusyId(id);
+    const wd = withdrawals.find((x) => x.id === id);
     const { error } = await supabase.rpc("admin_reject_withdrawal", { _withdrawal_id: id });
     setBusyId(null);
     if (error) { toast.error(error.message); return; }
     toast("Withdrawal rejected");
+    if (wd?.user_email) {
+      sendEmail({ data: {
+        template: "withdrawal-rejected",
+        to: wd.user_email,
+        data: { name: firstName(wd.user_email), amount: Number(wd.amount).toFixed(2), network: wd.network },
+        idempotencyKey: `withdrawal-rejected-${id}`,
+      } }).catch(() => {});
+    }
     void load();
   };
 
