@@ -24,7 +24,7 @@ const handler = createAuthEmailHandler({
   sendUrl: process.env.LOVABLE_SEND_URL,
   emails: {
     signup: {
-      subject: (data) => `Your ${SITE_NAME} verification code: ${data.token ?? ''}`.trim(),
+      subject: 'Your verification code',
       render: (data) =>
         React.createElement(SignupEmail, {
           siteName: SITE_NAME,
