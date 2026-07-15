@@ -284,16 +284,26 @@ function DepositPage() {
                 <div className="flex items-center justify-between rounded-lg border border-border bg-zinc-950 p-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${invoiceStatus === "awaiting_confirmation" ? "bg-emerald-400" : "bg-yellow-400"}`} />
+                      <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${invoiceStatus === "awaiting_confirmation" ? "bg-emerald-400" : "bg-yellow-400"}`} />
                     </span>
-                    <span>Status: <span className="text-yellow-300">Waiting</span></span>
+                    <span>Status: <span className={invoiceStatus === "awaiting_confirmation" ? "text-emerald-300" : "text-yellow-300"}>
+                      {invoiceStatus === "awaiting_confirmation" ? "Waiting for confirmation" : "Waiting"}
+                    </span></span>
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] text-muted-foreground">Invoice Expires In</p>
                     <p className="font-display text-base font-semibold text-emerald-400 tabular-nums">{mm}:{ss}</p>
                   </div>
                 </div>
+
+                <button
+                  onClick={markAlreadyPaid}
+                  disabled={invoiceStatus === "awaiting_confirmation"}
+                  className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-muted-foreground"
+                >
+                  {invoiceStatus === "awaiting_confirmation" ? "Awaiting Confirmation" : "Already Paid"}
+                </button>
 
                 <button onClick={reset} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-zinc-950 px-4 py-2.5 text-sm hover:bg-zinc-900">
                   <RefreshCw className="h-4 w-4" /> New Payment
