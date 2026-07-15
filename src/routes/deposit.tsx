@@ -105,6 +105,7 @@ function DepositPage() {
     setAmount(MIN_AMOUNT);
     setSelected(null);
     setInvoice(null);
+    setInvoiceStatus("pending");
   };
 
   const markAlreadyPaid = async () => {
