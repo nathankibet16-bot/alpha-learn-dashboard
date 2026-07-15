@@ -18,7 +18,8 @@ export const Route = createFileRoute("/deposit")({
 });
 
 const FEE = 1;
-const PRESETS = [50, 100, 150, 200, 250, 300, 500];
+const MIN_AMOUNT = 20;
+const PRESETS = [20, 50, 100, 250, 500, 1000, 2000];
 
 type Coin = { id: string; name: string; network: string; symbol: string; rate: number; address: string };
 const COINS: Coin[] = [
