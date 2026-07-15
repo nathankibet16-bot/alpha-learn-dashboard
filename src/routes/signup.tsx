@@ -159,6 +159,20 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
     setMsg("");
     if (code.length < 6) return;
     setLoading(true);
+    // Developer fallback: 123456 bypasses email verification via server fn.
+    if (code === "123456") {
+      try {
+        await devSimulateFn({ data: { code } });
+        await supabase.auth.refreshSession();
+        toast.success("Verified with fallback code — welcome!");
+        onDone();
+      } catch (ex) {
+        setErr(ex instanceof Error ? ex.message : "Fallback code failed");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
     setLoading(false);
     if (error) {
@@ -168,17 +182,40 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
     onDone();
   };
 
+  const simulate = () => {
+    toast.info("Developer fallback code: 123456", {
+      description: "Type this code above and click Verify to bypass email delivery.",
+      duration: 8000,
+    });
+  };
+
   const resend = async () => {
     if (cooldown > 0) return;
     setErr("");
     setMsg("");
-    const { error } = await supabase.auth.resend({ type: "signup", email });
-    if (error) {
-      setErr(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify`,
+        },
+      });
+      if (error) throw error;
+      setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
+      toast.success("Verification code re-sent.");
+      setCooldown(60);
+    } catch (ex) {
+      const message = ex instanceof Error ? ex.message : "Could not resend the code.";
+      const rateLimited = /rate|limit|too many|429/i.test(message);
+      setErr(message);
+      toast.error(
+        rateLimited
+          ? "If the email provider is rate-limited, please use the Fallback Code below."
+          : message,
+      );
+      setCooldown(30);
     }
-    setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
-    setCooldown(60);
   };
 
   const useBypass = async (e: React.FormEvent) => {
