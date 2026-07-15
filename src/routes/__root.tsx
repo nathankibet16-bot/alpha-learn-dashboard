@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" },
       { title: "Alpha Trader Group — Crypto Trader Portal" },
       { name: "description", content: "Alpha Trader Group is a  crypto trader portal for tracking balance, deposits, withdrawals, and live markets." },
       { property: "og:title", content: "Alpha Trader Group — Crypto Trader Portal" },
