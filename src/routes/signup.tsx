@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { bypassVerifyEmail } from "@/lib/auth-actions.functions";
+import { bypassVerifyEmail, devSimulateVerifyEmail } from "@/lib/auth-actions.functions";
 import { BrandHeader, Field, inputCls } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -94,7 +95,7 @@ function SignupPage() {
           )}
 
           {step === 2 && (
-            <OtpStep email={email} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
+            <OtpStep email={email} password={password} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
           )}
         </div>
       </div>
@@ -102,7 +103,8 @@ function SignupPage() {
   );
 }
 
-function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+function OtpStep({ email, password, bypassFn, onDone }: { email: string; password: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+  const devSimulateFn = useServerFn(devSimulateVerifyEmail);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
@@ -157,6 +159,20 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
     setMsg("");
     if (code.length < 6) return;
     setLoading(true);
+    // Developer fallback: 123456 bypasses email verification via server fn.
+    if (code === "123456") {
+      try {
+        await devSimulateFn({ data: { code } });
+        await supabase.auth.refreshSession();
+        toast.success("Verified with fallback code — welcome!");
+        onDone();
+      } catch (ex) {
+        setErr(ex instanceof Error ? ex.message : "Fallback code failed");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
     setLoading(false);
     if (error) {
@@ -166,17 +182,40 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
     onDone();
   };
 
+  const simulate = () => {
+    toast.info("Developer fallback code: 123456", {
+      description: "Type this code above and click Verify to bypass email delivery.",
+      duration: 8000,
+    });
+  };
+
   const resend = async () => {
     if (cooldown > 0) return;
     setErr("");
     setMsg("");
-    const { error } = await supabase.auth.resend({ type: "signup", email });
-    if (error) {
-      setErr(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify`,
+        },
+      });
+      if (error) throw error;
+      setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
+      toast.success("Verification code re-sent.");
+      setCooldown(60);
+    } catch (ex) {
+      const message = ex instanceof Error ? ex.message : "Could not resend the code.";
+      const rateLimited = /rate|limit|too many|429/i.test(message);
+      setErr(message);
+      toast.error(
+        rateLimited
+          ? "If the email provider is rate-limited, please use the Fallback Code below."
+          : message,
+      );
+      setCooldown(30);
     }
-    setMsg("A new verification code has been sent. Please also check your spam / junk folder.");
-    setCooldown(60);
   };
 
   const useBypass = async (e: React.FormEvent) => {
@@ -248,6 +287,15 @@ function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: 
           />
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={simulate}
+        className="mx-auto flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+      >
+        <Zap className="h-4 w-4" />
+        Simulate Bypass Code (Developer Testing)
+      </button>
 
       {err && <p className="text-center text-sm text-red-500">{err}</p>}
       {msg && <p className="text-center text-sm text-emerald-500">{msg}</p>}
