@@ -7,11 +7,11 @@ export const BALANCE_EVENT = "alphatrader:balance";
 // the local mirror keeps the trading simulator responsive without an extra round-trip each tick.
 
 export function getBalance(userId: string): number {
-  if (typeof window === "undefined") return 10000;
+  if (typeof window === "undefined") return 0;
   const raw = localStorage.getItem(BALANCE_KEY_PREFIX + userId);
-  if (raw == null) return 10000;
+  if (raw == null) return 0;
   const n = Number(raw);
-  return Number.isFinite(n) ? n : 10000;
+  return Number.isFinite(n) ? n : 0;
 }
 
 function writeCache(userId: string, value: number) {
