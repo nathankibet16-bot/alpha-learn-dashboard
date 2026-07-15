@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { bypassVerifyEmail } from "@/lib/auth-actions.functions";
+import { bypassVerifyEmail, devSimulateVerifyEmail } from "@/lib/auth-actions.functions";
 import { BrandHeader, Field, inputCls } from "./login";
 
 export const Route = createFileRoute("/signup")({
