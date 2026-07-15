@@ -95,7 +95,7 @@ function SignupPage() {
           )}
 
           {step === 2 && (
-            <OtpStep email={email} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
+            <OtpStep email={email} password={password} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
           )}
         </div>
       </div>
