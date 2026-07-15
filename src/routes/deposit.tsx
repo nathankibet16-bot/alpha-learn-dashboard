@@ -42,6 +42,7 @@ function DepositPage() {
   const [expires, setExpires] = useState(59 * 60 + 59);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [invoiceStatus, setInvoiceStatus] = useState<"pending" | "awaiting_confirmation">("pending");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
