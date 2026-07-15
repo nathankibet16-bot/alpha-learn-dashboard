@@ -9,10 +9,10 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "AlphaTrade Dashboard"
-const SENDER_DOMAIN = "notify.tumame.online"
-const ROOT_DOMAIN = "tumame.online"
-const FROM_DOMAIN = "notify.tumame.online"
+const SITE_NAME = "Alpha Trader Group"
+const SENDER_DOMAIN = "notify.alphatradergroup.org"
+const ROOT_DOMAIN = "alphatradergroup.org"
+const FROM_DOMAIN = "notify.alphatradergroup.org"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
 // The SDK handler owns verification, dispatch, and retry semantics; this file
