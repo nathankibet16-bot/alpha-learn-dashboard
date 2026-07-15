@@ -200,6 +200,21 @@ function DepositPage() {
             </button>
           </div>
         )}
+
+        {step === 2 && (
+          <div className="space-y-4 rounded-2xl border border-border bg-black p-5">
+            <p className="text-sm font-medium">Select crypto & network</p>
+            <div className="space-y-2">
+              {COINS.map((c) => {
+                const active = selected === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelected(c.id)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors ${
+                      active ? "border-emerald-500 bg-emerald-500/10" : "border-border bg-zinc-950 hover:border-emerald-500/50"
+                    }`}
+                  >
                     <div>
                       <p className="text-sm font-semibold">{c.name}</p>
                       <p className="text-xs text-muted-foreground">{c.symbol} · {c.network}</p>
