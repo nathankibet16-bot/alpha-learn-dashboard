@@ -18,21 +18,3 @@ export const bypassVerifyEmail = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
-const DEV_SIMULATE_CODE = "123456";
-
-export const devSimulateVerifyEmail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ code: z.string().min(1) }).parse(d))
-  .handler(async ({ data, context }) => {
-    if (data.code.trim() !== DEV_SIMULATE_CODE) {
-      throw new Error("Invalid simulate code");
-    }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, {
-      email_confirm: true,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
