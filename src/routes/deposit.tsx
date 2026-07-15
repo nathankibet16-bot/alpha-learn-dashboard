@@ -66,6 +66,7 @@ function DepositPage() {
     if (!coin) return;
     setStep(3);
     setLoading(true);
+    setInvoiceStatus("pending");
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     await new Promise((r) => setTimeout(r, 1800));
