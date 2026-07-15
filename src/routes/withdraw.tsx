@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { Menu, AlertTriangle, Bot, Lock, CheckCircle2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { getTradeCount, TRADE_COUNT_EVENT } from "@/lib/bot-session";
+import { sendNotificationEmail } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/withdraw")({
   head: () => ({
