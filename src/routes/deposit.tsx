@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
+import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNotificationEmail } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/deposit")({
   head: () => ({
