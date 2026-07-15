@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, Zap } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { bypassVerifyEmail, devSimulateVerifyEmail } from "@/lib/auth-actions.functions";
+import { bypassVerifyEmail } from "@/lib/auth-actions.functions";
 import { BrandHeader, Field, inputCls } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -18,6 +18,8 @@ export const Route = createFileRoute("/signup")({
 });
 
 type Step = 1 | 2;
+
+const CODE_LENGTH = 8;
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -104,8 +106,7 @@ function SignupPage() {
 }
 
 function OtpStep({ email, password, bypassFn, onDone }: { email: string; password: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
-  const devSimulateFn = useServerFn(devSimulateVerifyEmail);
-  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -135,11 +136,10 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
       return;
     }
     const next = [...digits];
-    // support paste of multi-digit into a single box
-    const chars = clean.slice(0, 6 - i).split("");
+    const chars = clean.slice(0, CODE_LENGTH - i).split("");
     for (let k = 0; k < chars.length; k++) next[i + k] = chars[k];
     setDigits(next);
-    const focusAt = Math.min(i + chars.length, 5);
+    const focusAt = Math.min(i + chars.length, CODE_LENGTH - 1);
     inputs.current[focusAt]?.focus();
   };
 
@@ -148,7 +148,7 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
       inputs.current[i - 1]?.focus();
     } else if (e.key === "ArrowLeft" && i > 0) {
       inputs.current[i - 1]?.focus();
-    } else if (e.key === "ArrowRight" && i < 5) {
+    } else if (e.key === "ArrowRight" && i < CODE_LENGTH - 1) {
       inputs.current[i + 1]?.focus();
     }
   };
@@ -157,22 +157,8 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
     e?.preventDefault();
     setErr("");
     setMsg("");
-    if (code.length < 6) return;
+    if (code.length < CODE_LENGTH) return;
     setLoading(true);
-    // Developer fallback: 123456 bypasses email verification via server fn.
-    if (code === "123456") {
-      try {
-        await devSimulateFn({ data: { code } });
-        await supabase.auth.refreshSession();
-        toast.success("Verified with fallback code — welcome!");
-        onDone();
-      } catch (ex) {
-        setErr(ex instanceof Error ? ex.message : "Fallback code failed");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: "signup" });
     setLoading(false);
     if (error) {
@@ -180,13 +166,6 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
       return;
     }
     onDone();
-  };
-
-  const simulate = () => {
-    toast.info("Developer fallback code: 123456", {
-      description: "Type this code above and click Verify to bypass email delivery.",
-      duration: 8000,
-    });
   };
 
   const resend = async () => {
@@ -211,7 +190,7 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
       setErr(message);
       toast.error(
         rateLimited
-          ? "If the email provider is rate-limited, please use the Fallback Code below."
+          ? "Email provider is rate-limited. Please wait a minute and try again."
           : message,
       );
       setCooldown(30);
@@ -268,11 +247,11 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Enter verification code</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          We sent a 6-digit code to <span className="text-foreground">{email}</span>
+          We sent an 8-digit code to <span className="text-foreground">{email}</span>
         </p>
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-1.5">
         {digits.map((d, i) => (
           <input
             key={i}
@@ -282,25 +261,16 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
             onKeyDown={(e) => onKeyDown(i, e)}
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={6}
-            className="h-14 w-12 rounded-lg border border-border bg-zinc-950 text-center font-display text-2xl font-bold text-foreground outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
+            maxLength={CODE_LENGTH}
+            className="h-14 w-10 rounded-lg border border-border bg-zinc-950 text-center font-display text-2xl font-bold text-foreground outline-none transition-colors focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
           />
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={simulate}
-        className="mx-auto flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
-      >
-        <Zap className="h-4 w-4" />
-        Simulate Bypass Code (Developer Testing)
-      </button>
-
       {err && <p className="text-center text-sm text-red-500">{err}</p>}
       {msg && <p className="text-center text-sm text-emerald-500">{msg}</p>}
 
-      <button disabled={loading || code.length < 6} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+      <button disabled={loading || code.length < CODE_LENGTH} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
         {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify & continue
       </button>
 
