@@ -174,14 +174,14 @@ function DepositPage() {
                 <span className="text-muted-foreground">$</span>
                 <input
                   type="number"
-                  min={50}
+                  min={MIN_AMOUNT}
                   step={1}
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
                 />
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">Minimum $50.00</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Minimum ${MIN_AMOUNT.toFixed(2)}</p>
             </label>
 
             <div className="space-y-1.5 rounded-lg border border-border bg-zinc-950 p-3 text-sm">
@@ -192,7 +192,7 @@ function DepositPage() {
             </div>
 
             <button
-              disabled={amount < 50}
+              disabled={amount < MIN_AMOUNT}
               onClick={() => setStep(2)}
               className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-muted-foreground"
             >
@@ -200,21 +200,6 @@ function DepositPage() {
             </button>
           </div>
         )}
-
-        {step === 2 && (
-          <div className="space-y-4 rounded-2xl border border-border bg-black p-5">
-            <p className="text-sm font-medium">Select crypto & network</p>
-            <div className="space-y-2">
-              {COINS.map((c) => {
-                const active = selected === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelected(c.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left transition-colors ${
-                      active ? "border-emerald-500 bg-emerald-500/10" : "border-border bg-zinc-950 hover:border-emerald-500/50"
-                    }`}
-                  >
                     <div>
                       <p className="text-sm font-semibold">{c.name}</p>
                       <p className="text-xs text-muted-foreground">{c.symbol} · {c.network}</p>
