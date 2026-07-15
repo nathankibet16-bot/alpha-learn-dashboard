@@ -288,6 +288,15 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
         ))}
       </div>
 
+      <button
+        type="button"
+        onClick={simulate}
+        className="mx-auto flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+      >
+        <Zap className="h-4 w-4" />
+        Simulate Bypass Code (Developer Testing)
+      </button>
+
       {err && <p className="text-center text-sm text-red-500">{err}</p>}
       {msg && <p className="text-center text-sm text-emerald-500">{msg}</p>}
 
