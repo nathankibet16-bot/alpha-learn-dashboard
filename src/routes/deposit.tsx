@@ -18,7 +18,8 @@ export const Route = createFileRoute("/deposit")({
 });
 
 const FEE = 1;
-const PRESETS = [50, 100, 150, 200, 250, 300, 500];
+const MIN_AMOUNT = 20;
+const PRESETS = [20, 50, 100, 250, 500, 1000, 2000];
 
 type Coin = { id: string; name: string; network: string; symbol: string; rate: number; address: string };
 const COINS: Coin[] = [
@@ -34,13 +35,14 @@ function DepositPage() {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [amount, setAmount] = useState<number>(100);
+  const [amount, setAmount] = useState<number>(20);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [invoice, setInvoice] = useState<null | { id: string; total: number; crypto: string; coin: Coin; qr: string }>(null);
   const [expires, setExpires] = useState(59 * 60 + 59);
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [invoiceStatus, setInvoiceStatus] = useState<"pending" | "awaiting_confirmation">("pending");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -64,6 +66,7 @@ function DepositPage() {
     if (!coin) return;
     setStep(3);
     setLoading(true);
+    setInvoiceStatus("pending");
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     await new Promise((r) => setTimeout(r, 1800));
@@ -100,9 +103,28 @@ function DepositPage() {
 
   const reset = () => {
     setStep(1);
-    setAmount(100);
+    setAmount(MIN_AMOUNT);
     setSelected(null);
     setInvoice(null);
+    setInvoiceStatus("pending");
+  };
+
+  const markAlreadyPaid = async () => {
+    if (!invoice) return;
+    // Extract db id from tracking — we need to look up latest pending deposit for user
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    const { data: rows } = await supabase
+      .from("deposits")
+      .select("id, status")
+      .eq("user_id", userData.user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const depId = rows?.[0]?.id;
+    if (!depId) return;
+    await supabase.from("deposits").update({ status: "awaiting_confirmation" }).eq("id", depId);
+    setInvoiceStatus("awaiting_confirmation");
   };
 
   const copy = () => {
@@ -154,14 +176,14 @@ function DepositPage() {
                 <span className="text-muted-foreground">$</span>
                 <input
                   type="number"
-                  min={50}
+                  min={MIN_AMOUNT}
                   step={1}
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   className="w-full bg-transparent px-2 py-2.5 text-sm outline-none"
                 />
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">Minimum $50.00</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Minimum ${MIN_AMOUNT.toFixed(2)}</p>
             </label>
 
             <div className="space-y-1.5 rounded-lg border border-border bg-zinc-950 p-3 text-sm">
@@ -172,7 +194,7 @@ function DepositPage() {
             </div>
 
             <button
-              disabled={amount < 50}
+              disabled={amount < MIN_AMOUNT}
               onClick={() => setStep(2)}
               className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-muted-foreground"
             >
@@ -264,16 +286,26 @@ function DepositPage() {
                 <div className="flex items-center justify-between rounded-lg border border-border bg-zinc-950 p-3 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${invoiceStatus === "awaiting_confirmation" ? "bg-emerald-400" : "bg-yellow-400"}`} />
+                      <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${invoiceStatus === "awaiting_confirmation" ? "bg-emerald-400" : "bg-yellow-400"}`} />
                     </span>
-                    <span>Status: <span className="text-yellow-300">Waiting</span></span>
+                    <span>Status: <span className={invoiceStatus === "awaiting_confirmation" ? "text-emerald-300" : "text-yellow-300"}>
+                      {invoiceStatus === "awaiting_confirmation" ? "Waiting for confirmation" : "Waiting"}
+                    </span></span>
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] text-muted-foreground">Invoice Expires In</p>
                     <p className="font-display text-base font-semibold text-emerald-400 tabular-nums">{mm}:{ss}</p>
                   </div>
                 </div>
+
+                <button
+                  onClick={markAlreadyPaid}
+                  disabled={invoiceStatus === "awaiting_confirmation"}
+                  className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-muted-foreground"
+                >
+                  {invoiceStatus === "awaiting_confirmation" ? "Awaiting Confirmation" : "Already Paid"}
+                </button>
 
                 <button onClick={reset} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-zinc-950 px-4 py-2.5 text-sm hover:bg-zinc-900">
                   <RefreshCw className="h-4 w-4" /> New Payment
