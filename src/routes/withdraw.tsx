@@ -30,6 +30,7 @@ const COINS = [
 
 function WithdrawPage() {
   const navigate = useNavigate();
+  const sendEmail = useServerFn(sendNotificationEmail);
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [tradeCount, setTradeCount] = useState(0);
@@ -66,17 +67,28 @@ function WithdrawPage() {
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     if (!address.trim()) { toast.error("Enter a wallet address"); return; }
     setSubmitting(true);
-    const { error } = await supabase.from("withdrawals").insert({
+    const networkLabel = network.trim() ? `${coin} · ${network.trim()}` : coin;
+    const walletAddress = address.trim();
+    const { data: inserted, error } = await supabase.from("withdrawals").insert({
       user_id: user.id,
       user_email: user.email ?? null,
       amount: amt,
-      network: network.trim() ? `${coin} · ${network.trim()}` : coin,
-      wallet_address: address.trim(),
-    });
+      network: networkLabel,
+      wallet_address: walletAddress,
+    }).select("id").single();
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
     setSubmitted(true);
     toast.success("Withdrawal request submitted — pending admin approval");
+    if (inserted?.id) {
+      const name = (user.user_metadata?.full_name as string | undefined)?.split(" ")[0]
+        ?? user.email?.split("@")[0];
+      sendEmail({ data: {
+        template: "withdrawal-submitted",
+        data: { name, amount: amt.toFixed(2), network: networkLabel, wallet: walletAddress },
+        idempotencyKey: `withdrawal-submitted-${inserted.id}`,
+      } }).catch(() => { /* non-blocking */ });
+    }
     setAmount(""); setAddress(""); setNetwork("");
   };
 
