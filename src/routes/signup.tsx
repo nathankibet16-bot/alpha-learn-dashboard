@@ -103,7 +103,8 @@ function SignupPage() {
   );
 }
 
-function OtpStep({ email, bypassFn, onDone }: { email: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+function OtpStep({ email, password, bypassFn, onDone }: { email: string; password: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+  const devSimulateFn = useServerFn(devSimulateVerifyEmail);
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
