@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { supabase } from "@/integrations/supabase/client";
 import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
-import { adjustBalance, getBalance, setBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
+import { getBalance, setBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
 
 export const Route = createFileRoute("/bot")({
   head: () => ({
