@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { supabase } from "@/integrations/supabase/client";
 import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
-import { adjustBalance, getBalance, BALANCE_EVENT } from "@/lib/auth";
+import { getBalance, setBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
 
 export const Route = createFileRoute("/bot")({
   head: () => ({
@@ -112,21 +112,23 @@ function BotPage() {
       const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
       const drift = (Math.random() - 0.5) * 0.008;
       const entry = Number((asset.base * (1 + drift)).toFixed(asset.base < 10 ? 4 : 2));
-      const win = Math.random() < 0.88;
+      const win = Math.random() < 0.9;
       const action: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
-      const stake = tradeAmount ?? 100;
+      // Payouts scale to the ACTIVE BALANCE so a running session yields ~15% cumulatively.
+      // ~10 trades per session at avg ~1.65% of balance/win − small losses ≈ 15%.
+      const activeBalance = getBalance(user.id);
       let profit: number;
       let price: number;
       if (win) {
-        const pct = 0.005 + Math.random() * 0.01; // 0.5% – 1.5%
-        profit = Number((stake * pct).toFixed(2));
+        const pct = 0.013 + Math.random() * 0.007; // 1.3% – 2.0% of balance
+        profit = Number((activeBalance * pct).toFixed(2));
         const moveDir = action === "BUY" ? 1 : -1;
         price = Number((entry * (1 + moveDir * 0.0035)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Successful — ${asset.symbol} +$${profit.toFixed(2)}`);
         toast.success(`Trade Successful: +$${profit.toFixed(2)}`);
       } else {
-        const pct = 0.001 + Math.random() * 0.003; // 0.1% – 0.4%
-        profit = -Number((stake * pct).toFixed(2));
+        const pct = 0.0008 + Math.random() * 0.0015; // 0.08% – 0.23% of balance
+        profit = -Number((activeBalance * pct).toFixed(2));
         const moveDir = action === "BUY" ? -1 : 1;
         price = Number((entry * (1 + moveDir * 0.0015)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Closed at loss — ${asset.symbol} $${profit.toFixed(2)}`);
@@ -140,7 +142,7 @@ function BotPage() {
       setSessionPnL((p) => Number((p + profit).toFixed(2)));
       incrementTradeCount(user.id);
       void supabase.rpc("increment_my_trade_count");
-    }, 30000);
+    }, 12000);
 
     return () => {
       clearInterval(logTimer);
@@ -192,17 +194,21 @@ function BotPage() {
     toast.success(`Session started with $${amt.toFixed(2)}`);
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     if (!user) return;
     setRunning(false);
-    if (sessionPnL !== 0) {
-      adjustBalance(user.id, sessionPnL);
-      const sign = sessionPnL >= 0 ? "+" : "";
-      toast.success(`Session ended — ${sign}$${sessionPnL.toFixed(2)} applied to balance`);
+    const pnl = sessionPnL;
+    if (pnl !== 0) {
+      const nextBal = Math.max(0, Number((getBalance(user.id) + pnl).toFixed(2)));
+      // Await server write so the dashboard sees the new balance immediately.
+      await setBalance(user.id, nextBal);
+      await syncBalanceFromServer(user.id);
+      const sign = pnl >= 0 ? "+" : "";
+      toast.success(`Session ended — ${sign}$${pnl.toFixed(2)} applied to balance`);
     } else {
       toast("Session ended");
     }
-    pushLog(`Session stopped — net ${sessionPnL >= 0 ? "+" : ""}$${sessionPnL.toFixed(2)} applied`);
+    pushLog(`Session stopped — net ${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} applied`);
     setSessionPnL(0);
     setTrades([]);
     setTradeAmount(null);

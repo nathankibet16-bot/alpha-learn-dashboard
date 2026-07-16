@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { getTradeCount, TRADE_COUNT_EVENT } from "@/lib/bot-session";
 import { sendNotificationEmail } from "@/lib/notifications.functions";
+import { adjustBalance } from "@/lib/auth";
 
 export const Route = createFileRoute("/withdraw")({
   head: () => ({
@@ -79,14 +80,15 @@ function WithdrawPage() {
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
     setSubmitted(true);
-    toast.success("Withdrawal request submitted — pending admin approval");
+    adjustBalance(user.id, -amt);
+    toast.success("Withdrawal processed successfully");
     if (inserted?.id) {
       const name = (user.user_metadata?.full_name as string | undefined)?.split(" ")[0]
         ?? user.email?.split("@")[0];
       sendEmail({ data: {
-        template: "withdrawal-submitted",
+        template: "withdrawal-completed",
         data: { name, amount: amt.toFixed(2), network: networkLabel, wallet: walletAddress },
-        idempotencyKey: `withdrawal-submitted-${inserted.id}`,
+        idempotencyKey: `withdrawal-completed-${inserted.id}`,
       } }).catch(() => { /* non-blocking */ });
     }
     setAmount(""); setAddress(""); setNetwork("");
