@@ -114,20 +114,19 @@ function BotPage() {
       const entry = Number((asset.base * (1 + drift)).toFixed(asset.base < 10 ? 4 : 2));
       const win = Math.random() < 0.9;
       const action: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
-      // Payouts scale to the ACTIVE BALANCE so a running session yields ~15% cumulatively.
-      // ~10 trades per session at avg ~1.65% of balance/win − small losses ≈ 15%.
-      const activeBalance = getBalance(user.id);
+      // Payouts scale to the ACTIVE ALLOCATED AMOUNT: each successful run yields 10%–15%.
+      const activeBalance = tradeAmount ?? getBalance(user.id);
       let profit: number;
       let price: number;
       if (win) {
-        const pct = 0.013 + Math.random() * 0.007; // 1.3% – 2.0% of balance
+        const pct = 0.10 + Math.random() * 0.05; // 10% – 15% of allocated balance
         profit = Number((activeBalance * pct).toFixed(2));
         const moveDir = action === "BUY" ? 1 : -1;
         price = Number((entry * (1 + moveDir * 0.0035)).toFixed(asset.base < 10 ? 4 : 2));
         pushLog(`Trade Successful — ${asset.symbol} +$${profit.toFixed(2)}`);
         toast.success(`Trade Successful: +$${profit.toFixed(2)}`);
       } else {
-        const pct = 0.0008 + Math.random() * 0.0015; // 0.08% – 0.23% of balance
+        const pct = 0.01 + Math.random() * 0.02; // 1% – 3% loss of allocated balance
         profit = -Number((activeBalance * pct).toFixed(2));
         const moveDir = action === "BUY" ? -1 : 1;
         price = Number((entry * (1 + moveDir * 0.0015)).toFixed(asset.base < 10 ? 4 : 2));
