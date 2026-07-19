@@ -99,7 +99,7 @@ function VerifyPage() {
               </Field>
               {err && <p className="text-sm text-red-500">{err}</p>}
               {msg && <p className="text-sm text-emerald-500">{msg}</p>}
-              <button disabled={loading || code.length < 6} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+              <button disabled={loading || code.length < 8} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />} Verify email
               </button>
               <div className="flex items-center justify-between text-sm">
