@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { listEmailLogs } from "@lovable.dev/email-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const LOG_STATUSES = ["accepted", "delivered", "failed", "bounced", "rejected", "suppressed"] as const;
+const LOG_STATUSES = ["accepted", "sent", "failed", "bounced", "rejected", "suppressed", "rate_limited", "complained", "unsubscribed"] as const;
 
 const listSchema = z.object({
   status: z.enum(LOG_STATUSES).optional(),
@@ -25,16 +26,26 @@ export const getEmailDeliveryLogs = createServerFn({ method: "POST" })
   .inputValidator((d) => listSchema.parse(d ?? {}))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let query = (supabaseAdmin as any)
-      .from("email_delivery_logs")
-      .select("id,user_id,recipient,email_type,provider,provider_message_id,sender,status,provider_status,error_code,error_message,environment,created_at,delivered_at,failed_at")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (data.status) query = query.eq("status", data.status);
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-    return rows ?? [];
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("Email provider is not configured");
+    const logs = await listEmailLogs(
+      { limit: 100, event_type: data.status === "accepted" ? "sent" : data.status },
+      { apiKey },
+    );
+    return logs.data.map((event, index) => ({
+      id: `${event.message_id ?? event.timestamp}-${index}`,
+      recipient: event.recipient,
+      email_type: event.tags?.[0] ?? event.event_type,
+      provider: "lovable-email",
+      provider_message_id: event.message_id ?? null,
+      sender: "Alpha Traders <no-reply@notify.alphatradersgrp.com>",
+      status: event.event_type === "sent" ? "accepted" : event.event_type,
+      provider_status: event.status ?? event.event_type,
+      error_code: ["rejected", "bounced", "complained", "suppressed", "rate_limited"].includes(event.event_type) ? (event.status ?? event.event_type) : null,
+      error_message: null,
+      environment: "production",
+      created_at: event.timestamp,
+    }));
   });
 
 export const sendAdminTestEmail = createServerFn({ method: "POST" })
