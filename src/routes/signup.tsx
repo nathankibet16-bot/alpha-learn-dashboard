@@ -17,7 +17,7 @@ export const Route = createFileRoute("/signup")({
 
 type Step = 1 | 2;
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -203,7 +203,7 @@ function OtpStep({ email, password, onDone }: { email: string; password: string;
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Enter verification code</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          We sent a 6-digit code to <span className="text-foreground">{email}</span>
+          We sent an 8-digit code to <span className="text-foreground">{email}</span>
         </p>
       </div>
 
