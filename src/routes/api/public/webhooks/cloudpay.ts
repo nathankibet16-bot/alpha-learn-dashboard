@@ -57,7 +57,7 @@ export const Route = createFileRoute("/api/public/webhooks/cloudpay")({
           const { error } = await supabaseAdmin.rpc("credit_mpesa_deposit", {
             _internal_reference: internalRef,
             _mpesa_receipt: receipt || `RCP-${Date.now()}`,
-            _provider_reference: providerRef || null,
+            _provider_reference: providerRef || "",
             _provider_response: payload as never,
           });
           if (error) {

@@ -21,9 +21,12 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BotRouteImport } from './routes/bot'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MpesaWithdrawRouteImport } from './routes/mpesa.withdraw'
+import { Route as MpesaDepositRouteImport } from './routes/mpesa.deposit'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicWebhooksCloudpayRouteImport } from './routes/api/public/webhooks/cloudpay'
 
 const WithdrawRoute = WithdrawRouteImport.update({
   id: '/withdraw',
@@ -85,6 +88,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MpesaWithdrawRoute = MpesaWithdrawRouteImport.update({
+  id: '/mpesa/withdraw',
+  path: '/mpesa/withdraw',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MpesaDepositRoute = MpesaDepositRouteImport.update({
+  id: '/mpesa/deposit',
+  path: '/mpesa/deposit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailTransactionalPreviewRoute =
   LovableEmailTransactionalPreviewRouteImport.update({
     id: '/lovable/email/transactional/preview',
@@ -101,6 +114,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksCloudpayRoute =
+  ApiPublicWebhooksCloudpayRouteImport.update({
+    id: '/api/public/webhooks/cloudpay',
+    path: '/api/public/webhooks/cloudpay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -115,6 +134,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
   '/withdraw': typeof WithdrawRoute
+  '/mpesa/deposit': typeof MpesaDepositRoute
+  '/mpesa/withdraw': typeof MpesaWithdrawRoute
+  '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -132,6 +154,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
   '/withdraw': typeof WithdrawRoute
+  '/mpesa/deposit': typeof MpesaDepositRoute
+  '/mpesa/withdraw': typeof MpesaWithdrawRoute
+  '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -150,6 +175,9 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/verify': typeof VerifyRoute
   '/withdraw': typeof WithdrawRoute
+  '/mpesa/deposit': typeof MpesaDepositRoute
+  '/mpesa/withdraw': typeof MpesaWithdrawRoute
+  '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -169,6 +197,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify'
     | '/withdraw'
+    | '/mpesa/deposit'
+    | '/mpesa/withdraw'
+    | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -186,6 +217,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify'
     | '/withdraw'
+    | '/mpesa/deposit'
+    | '/mpesa/withdraw'
+    | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -203,6 +237,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify'
     | '/withdraw'
+    | '/mpesa/deposit'
+    | '/mpesa/withdraw'
+    | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -221,6 +258,9 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   VerifyRoute: typeof VerifyRoute
   WithdrawRoute: typeof WithdrawRoute
+  MpesaDepositRoute: typeof MpesaDepositRoute
+  MpesaWithdrawRoute: typeof MpesaWithdrawRoute
+  ApiPublicWebhooksCloudpayRoute: typeof ApiPublicWebhooksCloudpayRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -312,6 +352,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mpesa/withdraw': {
+      id: '/mpesa/withdraw'
+      path: '/mpesa/withdraw'
+      fullPath: '/mpesa/withdraw'
+      preLoaderRoute: typeof MpesaWithdrawRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mpesa/deposit': {
+      id: '/mpesa/deposit'
+      path: '/mpesa/deposit'
+      fullPath: '/mpesa/deposit'
+      preLoaderRoute: typeof MpesaDepositRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/preview': {
       id: '/lovable/email/transactional/preview'
       path: '/lovable/email/transactional/preview'
@@ -333,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/cloudpay': {
+      id: '/api/public/webhooks/cloudpay'
+      path: '/api/public/webhooks/cloudpay'
+      fullPath: '/api/public/webhooks/cloudpay'
+      preLoaderRoute: typeof ApiPublicWebhooksCloudpayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -349,6 +410,9 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   VerifyRoute: VerifyRoute,
   WithdrawRoute: WithdrawRoute,
+  MpesaDepositRoute: MpesaDepositRoute,
+  MpesaWithdrawRoute: MpesaWithdrawRoute,
+  ApiPublicWebhooksCloudpayRoute: ApiPublicWebhooksCloudpayRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
@@ -356,13 +420,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
