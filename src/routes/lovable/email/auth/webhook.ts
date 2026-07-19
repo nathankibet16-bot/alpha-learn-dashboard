@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { render } from '@react-email/render'
 import { createAuthEmailHandler } from '@lovable.dev/email-js'
 import { createFileRoute } from '@tanstack/react-router'
 import { SignupEmail } from '@/lib/email-templates/signup'
