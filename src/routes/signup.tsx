@@ -17,7 +17,7 @@ export const Route = createFileRoute("/signup")({
 
 type Step = 1 | 2;
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 
 function SignupPage() {
   const navigate = useNavigate();
