@@ -66,9 +66,39 @@
   color-scheme: dark;
 }
 
+/* Light theme overrides */
+.light {
+  color-scheme: light;
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.17 0.006 285);
+  --card: oklch(0.985 0 0);
+  --card-foreground: oklch(0.17 0.006 285);
+  --popover: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.17 0.006 285);
+  --secondary: oklch(0.95 0.005 285);
+  --secondary-foreground: oklch(0.17 0.006 285);
+  --muted: oklch(0.96 0.003 285);
+  --muted-foreground: oklch(0.45 0.01 286);
+  --accent: oklch(0.94 0.005 285);
+  --accent-foreground: oklch(0.17 0.006 285);
+  --border: oklch(0.9 0.005 285);
+  --input: oklch(0.9 0.005 285);
+}
+
+/* Remap hardcoded zinc utilities so existing UI adapts to light mode */
+.light .bg-zinc-950 { background-color: oklch(0.99 0 0) !important; }
+.light .bg-zinc-900 { background-color: oklch(0.96 0.003 285) !important; }
+.light .bg-zinc-800 { background-color: oklch(0.92 0.005 285) !important; }
+.light .hover\:bg-zinc-800:hover { background-color: oklch(0.92 0.005 285) !important; }
+.light .border-zinc-800 { border-color: oklch(0.9 0.005 285) !important; }
+.light .from-zinc-900 { --tw-gradient-from: oklch(0.97 0.003 285) !important; }
+.light .to-zinc-950 { --tw-gradient-to: oklch(0.99 0 0) !important; }
+.light .bg-zinc-950\/90 { background-color: oklch(0.99 0 0 / 0.9) !important; }
+
 @layer base {
   * { border-color: var(--color-border); }
-  html, body { background-color: #09090b; color: var(--color-foreground); font-family: var(--font-sans); }
+  html, body { background-color: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); }
+  html.light, html.light body { background-color: #ffffff; }
   h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
 }
 
