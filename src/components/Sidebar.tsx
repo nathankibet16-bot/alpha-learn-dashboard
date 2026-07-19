@@ -21,6 +21,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const { isAdmin } = useIsAdmin();
+  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
