@@ -32,10 +32,10 @@ export function Shell({ preview, children }: { preview: string; children: React.
       <Body style={main}>
         <Container style={container}>
           <Section style={panel}>
-            <span style={brandBar}>Alpha Trader Group</span>
+            <span style={brandBar}>Alpha Traders</span>
             {children}
             <Hr style={{ borderColor: '#1f2a24', margin: '26px 0 12px' }} />
-            <Text style={muted}>You received this email because of activity on your Alpha Trader Group account. If this wasn't you, please secure your account or ignore this message.</Text>
+            <Text style={muted}>You received this email because of activity on your Alpha Traders account. If this wasn't you, you can ignore this message.</Text>
           </Section>
         </Container>
       </Body>
