@@ -1,22 +1,13 @@
 import * as React from 'react'
 import { render } from '@react-email/render'
-import { EmailAPIError, sendLovableEmail } from '@lovable.dev/email-js'
 import { TEMPLATES } from './registry'
+import { EMAIL_FROM, EMAIL_SENDER_DOMAIN, sendLoggedEmail } from '@/lib/email-delivery.server'
 
 // Server-only: reads LOVABLE_API_KEY. Never import from client components.
 
-// Configuration baked in at scaffold time
-const SITE_NAME = "Alpha Traders"
-// SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
-// It MUST match the subdomain delegated to Lovable's nameservers. NEVER use the root domain.
-const SENDER_DOMAIN = "notify.alphatradersgrp.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// Can be the root domain when display_from_root is enabled — this is cosmetic only.
-const FROM_DOMAIN = "notify.alphatradersgrp.com"
-
 export type SendTemplateEmailResult =
-  | { sent: true }
-  | { sent: false; reason: 'recipient_suppressed' }
+  | { sent: true; messageId?: string; attemptId: string }
+  | { sent: false; reason: 'recipient_suppressed' | 'provider_rejected'; attemptId: string; errorCode?: string }
 
 export interface SendTemplateEmailOptions {
   templateData?: Record<string, any>
@@ -37,11 +28,6 @@ export async function sendTemplateEmail(
   to: string,
   options: SendTemplateEmailOptions = {}
 ): Promise<SendTemplateEmailResult> {
-  const apiKey = process.env.LOVABLE_API_KEY
-  if (!apiKey) {
-    throw new Error('LOVABLE_API_KEY is not configured')
-  }
-
   const template = TEMPLATES[templateName]
   if (!template) {
     throw new Error(
@@ -65,28 +51,26 @@ export async function sendTemplateEmail(
       ? template.subject(templateData)
       : template.subject
 
-  try {
-    await sendLovableEmail(
-      {
-        to: recipient,
-        from: `${SITE_NAME} <no-reply@${FROM_DOMAIN}>`,
-        sender_domain: SENDER_DOMAIN,
-        subject,
-        html,
-        text,
-        purpose: 'transactional',
-        label: templateName,
-        idempotency_key: options.idempotencyKey || crypto.randomUUID(),
-        reply_to: options.replyTo,
-      },
-      { apiKey, sendUrl: process.env.LOVABLE_SEND_URL }
-    )
-  } catch (error) {
-    if (error instanceof EmailAPIError && error.code === 'recipient_suppressed') {
-      return { sent: false, reason: 'recipient_suppressed' }
+  const result = await sendLoggedEmail({
+    recipient,
+    emailType: templateName,
+    subject,
+    html,
+    text,
+    sender: EMAIL_FROM,
+    senderDomain: EMAIL_SENDER_DOMAIN,
+    label: templateName,
+    idempotencyKey: options.idempotencyKey || crypto.randomUUID(),
+  })
+
+  if (!result.accepted) {
+    return {
+      sent: false,
+      reason: result.status === 'suppressed' ? 'recipient_suppressed' : 'provider_rejected',
+      attemptId: result.attemptId,
+      errorCode: result.errorCode,
     }
-    throw error
   }
 
-  return { sent: true }
+  return { sent: true, messageId: result.providerMessageId, attemptId: result.attemptId }
 }
