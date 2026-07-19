@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/admin";
+import { useTheme } from "@/lib/theme";
 
 const baseLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
