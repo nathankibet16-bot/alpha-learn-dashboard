@@ -87,11 +87,11 @@ function VerifyPage() {
           </div>
 
           <form onSubmit={verify} className="space-y-4">
-              <Field label="6-digit verification code">
+              <Field label="8-digit verification code">
                 <input
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="123456"
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  placeholder="12345678"
                   inputMode="numeric"
                   className={inputCls + " tracking-[0.5em] text-center text-lg"}
                   required
