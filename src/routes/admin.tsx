@@ -233,6 +233,77 @@ function AdminPage() {
             </table>
           </TableWrap>
         </section>
+
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold text-emerald-400">M-Pesa Deposits</h2>
+          <TableWrap>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr><Th>User</Th><Th>Phone</Th><Th>KES</Th><Th>USD Credited</Th><Th>Receipt</Th><Th>Status</Th><Th>Time</Th></tr>
+              </thead>
+              <tbody>
+                {mpesaDeposits.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No M-Pesa deposits.</td></tr>}
+                {mpesaDeposits.map((d) => (
+                  <tr key={d.id} className="border-t border-border">
+                    <Td>{d.user_email ?? "—"}</Td>
+                    <Td className="text-xs">{d.phone}</Td>
+                    <Td>KES {Number(d.amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td className="text-emerald-400">${Number(d.credited_amount_usd).toFixed(2)}</Td>
+                    <Td className="text-xs">{d.mpesa_receipt ?? "—"}</Td>
+                    <Td><StatusBadge status={d.status} /></Td>
+                    <Td className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleString()}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </section>
+
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold text-emerald-400">M-Pesa Withdrawals</h2>
+          <TableWrap>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr><Th>User</Th><Th>Phone</Th><Th>USD</Th><Th>Gross KES</Th><Th>Net KES</Th><Th>Receipt</Th><Th>Status</Th><Th>Actions</Th></tr>
+              </thead>
+              <tbody>
+                {mpesaWithdrawals.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No M-Pesa withdrawals.</td></tr>}
+                {mpesaWithdrawals.map((w) => (
+                  <tr key={w.id} className="border-t border-border">
+                    <Td>{w.user_email ?? "—"}</Td>
+                    <Td className="text-xs">{w.phone}</Td>
+                    <Td className="text-emerald-400">${Number(w.amount_usd).toFixed(2)}</Td>
+                    <Td>KES {Number(w.gross_amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td>KES {Number(w.net_amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td className="text-xs">{w.mpesa_receipt ?? "—"}</Td>
+                    <Td><StatusBadge status={w.status} /></Td>
+                    <Td>
+                      {w.status === "pending" ? (
+                        <div className="flex gap-2">
+                          <button disabled={busyId === w.id} onClick={async () => {
+                            const receipt = window.prompt("Enter M-Pesa receipt from CloudPay dashboard:");
+                            if (!receipt) return;
+                            setBusyId(w.id);
+                            const { error } = await supabase.rpc("admin_complete_mpesa_withdrawal", { _withdrawal_id: w.id, _mpesa_receipt: receipt, _provider_reference: receipt });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast.success("Withdrawal completed"); void load(); }
+                          }} className="rounded-md bg-emerald-500 px-2 py-1 text-xs font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">Complete</button>
+                          <button disabled={busyId === w.id} onClick={async () => {
+                            const reason = window.prompt("Reason for refund:") ?? "Rejected";
+                            setBusyId(w.id);
+                            const { error } = await supabase.rpc("admin_refund_mpesa_withdrawal", { _withdrawal_id: w.id, _reason: reason });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast("Refunded"); void load(); }
+                          }} className="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-60">Refund</button>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </section>
       </main>
     </div>
   );
