@@ -1,10 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
+import { Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { bypassVerifyEmail } from "@/lib/auth-actions.functions";
 import { BrandHeader, Field, inputCls } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -23,7 +21,6 @@ const CODE_LENGTH = 6;
 
 function SignupPage() {
   const navigate = useNavigate();
-  const bypassFn = useServerFn(bypassVerifyEmail);
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -97,7 +94,7 @@ function SignupPage() {
           )}
 
           {step === 2 && (
-            <OtpStep email={email} password={password} bypassFn={bypassFn} onDone={() => navigate({ to: "/dashboard" })} />
+            <OtpStep email={email} password={password} onDone={() => navigate({ to: "/dashboard" })} />
           )}
         </div>
       </div>
@@ -105,13 +102,12 @@ function SignupPage() {
   );
 }
 
-function OtpStep({ email, password, bypassFn, onDone }: { email: string; password: string; bypassFn: (args: { data: { code: string } }) => Promise<unknown>; onDone: () => void }) {
+function OtpStep({ email, password, onDone }: { email: string; password: string; onDone: () => void }) {
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showBypass, setShowBypass] = useState(false);
-  const [bypass, setBypass] = useState("");
+  const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(60);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -169,9 +165,10 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
   };
 
   const resend = async () => {
-    if (cooldown > 0) return;
+    if (cooldown > 0 || resending) return;
     setErr("");
     setMsg("");
+    setResending(true);
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -193,51 +190,10 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
           ? "Email provider is rate-limited. Please wait a minute and try again."
           : message,
       );
-      setCooldown(30);
-    }
-  };
-
-  const useBypass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr("");
-    setMsg("");
-    setLoading(true);
-    try {
-      await bypassFn({ data: { code: bypass.trim() } });
-      await supabase.auth.refreshSession();
-      onDone();
-    } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "Invalid access code");
     } finally {
-      setLoading(false);
+      setResending(false);
     }
   };
-
-  if (showBypass) {
-    return (
-      <form onSubmit={useBypass} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-500/10 text-emerald-500">
-            <KeyRound className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="font-display text-xl font-bold">Fallback access code</h1>
-            <p className="text-xs text-muted-foreground">Use if email is delayed</p>
-          </div>
-        </div>
-        <Field label="Access code">
-          <input value={bypass} onChange={(e) => setBypass(e.target.value)} placeholder="ALPHA-TRADER-CODE" className={inputCls + " uppercase tracking-widest"} required />
-        </Field>
-        {err && <p className="text-sm text-red-500">{err}</p>}
-        <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 py-3 font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />} Unlock account
-        </button>
-        <button type="button" onClick={() => setShowBypass(false)} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
-          ← Back to code entry
-        </button>
-      </form>
-    );
-  }
 
   return (
     <form onSubmit={verify} className="space-y-5">
@@ -278,13 +234,10 @@ function OtpStep({ email, password, bypassFn, onDone }: { email: string; passwor
         <button
           type="button"
           onClick={resend}
-          disabled={cooldown > 0}
+          disabled={cooldown > 0 || resending}
           className="text-emerald-500 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
         >
-          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-        </button>
-        <button type="button" onClick={() => setShowBypass(true)} className="text-muted-foreground hover:text-foreground">
-          Didn't receive it?
+          {resending ? "Sending…" : cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
         </button>
       </div>
       <p className="text-center text-xs text-muted-foreground">
