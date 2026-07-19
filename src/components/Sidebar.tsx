@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
