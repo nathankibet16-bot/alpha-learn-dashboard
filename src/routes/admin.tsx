@@ -36,6 +36,8 @@ type Withdrawal = {
   status: string;
   created_at: string;
 };
+type MpesaDep = { id: string; user_email: string | null; amount_kes: number; credited_amount_usd: number; phone: string; mpesa_receipt: string | null; status: string; credited: boolean; created_at: string };
+type MpesaWd = { id: string; user_email: string | null; amount_usd: number; gross_amount_kes: number; net_amount_kes: number; phone: string; status: string; mpesa_receipt: string | null; created_at: string };
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -43,17 +45,23 @@ function AdminPage() {
   const [open, setOpen] = useState(false);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [mpesaDeposits, setMpesaDeposits] = useState<MpesaDep[]>([]);
+  const [mpesaWithdrawals, setMpesaWithdrawals] = useState<MpesaWd[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [d, w] = await Promise.all([
+    const [d, w, md, mw] = await Promise.all([
       supabase.from("deposits").select("id,user_email,amount,network,address,status,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("withdrawals").select("id,user_email,amount,network,wallet_address,status,created_at").order("created_at", { ascending: false }).limit(100),
+      supabase.from("mpesa_deposits").select("id,user_email,amount_kes,credited_amount_usd,phone,mpesa_receipt,status,credited,created_at").order("created_at", { ascending: false }).limit(100),
+      supabase.from("mpesa_withdrawals").select("id,user_email,amount_usd,gross_amount_kes,net_amount_kes,phone,status,mpesa_receipt,created_at").order("created_at", { ascending: false }).limit(100),
     ]);
     if (d.data) setDeposits(d.data as Deposit[]);
     if (w.data) setWithdrawals(w.data as Withdrawal[]);
+    if (md.data) setMpesaDeposits(md.data as MpesaDep[]);
+    if (mw.data) setMpesaWithdrawals(mw.data as MpesaWd[]);
     setRefreshing(false);
   }, []);
 
