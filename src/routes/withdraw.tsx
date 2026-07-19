@@ -108,6 +108,10 @@ function WithdrawPage() {
       </header>
 
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+        <div className="grid grid-cols-2 rounded-xl border border-border bg-black p-1 text-sm">
+          <span className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 py-2 font-semibold text-black">Crypto</span>
+          <Link to="/mpesa/withdraw" className="flex items-center justify-center gap-2 rounded-lg py-2 text-muted-foreground hover:text-foreground">M-Pesa</Link>
+        </div>
         {locked && (
           <div className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-5">
             <div className="flex items-start gap-3">

@@ -56,6 +56,219 @@ export type Database = {
         }
         Relationships: []
       }
+      mpesa_deposits: {
+        Row: {
+          amount_kes: number
+          checkout_request_id: string | null
+          completed_at: string | null
+          created_at: string
+          credited: boolean
+          credited_amount_usd: number
+          credited_at: string | null
+          exchange_rate: number
+          failure_reason: string | null
+          fee_kes: number
+          id: string
+          internal_reference: string
+          merchant_request_id: string | null
+          mpesa_receipt: string | null
+          phone: string
+          provider_reference: string | null
+          provider_response: Json | null
+          status: string
+          total_paid_kes: number
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_kes: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          credited?: boolean
+          credited_amount_usd: number
+          credited_at?: string | null
+          exchange_rate: number
+          failure_reason?: string | null
+          fee_kes?: number
+          id?: string
+          internal_reference: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone: string
+          provider_reference?: string | null
+          provider_response?: Json | null
+          status?: string
+          total_paid_kes: number
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_kes?: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          credited?: boolean
+          credited_amount_usd?: number
+          credited_at?: string | null
+          exchange_rate?: number
+          failure_reason?: string | null
+          fee_kes?: number
+          id?: string
+          internal_reference?: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone?: string
+          provider_reference?: string | null
+          provider_response?: Json | null
+          status?: string
+          total_paid_kes?: number
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mpesa_settings: {
+        Row: {
+          daily_withdrawal_limit_kes: number
+          deposit_fee_kes: number
+          deposits_enabled: boolean
+          id: boolean
+          kes_to_usd_rate: number
+          max_withdrawal_kes: number
+          min_deposit_kes: number
+          min_withdrawal_kes: number
+          updated_at: string
+          usd_to_kes_rate: number
+          withdrawal_fee_fixed_kes: number
+          withdrawal_fee_percent: number
+          withdrawals_enabled: boolean
+        }
+        Insert: {
+          daily_withdrawal_limit_kes?: number
+          deposit_fee_kes?: number
+          deposits_enabled?: boolean
+          id?: boolean
+          kes_to_usd_rate?: number
+          max_withdrawal_kes?: number
+          min_deposit_kes?: number
+          min_withdrawal_kes?: number
+          updated_at?: string
+          usd_to_kes_rate?: number
+          withdrawal_fee_fixed_kes?: number
+          withdrawal_fee_percent?: number
+          withdrawals_enabled?: boolean
+        }
+        Update: {
+          daily_withdrawal_limit_kes?: number
+          deposit_fee_kes?: number
+          deposits_enabled?: boolean
+          id?: boolean
+          kes_to_usd_rate?: number
+          max_withdrawal_kes?: number
+          min_deposit_kes?: number
+          min_withdrawal_kes?: number
+          updated_at?: string
+          usd_to_kes_rate?: number
+          withdrawal_fee_fixed_kes?: number
+          withdrawal_fee_percent?: number
+          withdrawals_enabled?: boolean
+        }
+        Relationships: []
+      }
+      mpesa_withdrawals: {
+        Row: {
+          amount_usd: number
+          approved_at: string | null
+          balance_deducted: boolean
+          balance_reserved: boolean
+          completed_at: string | null
+          created_at: string
+          exchange_rate: number
+          failed_at: string | null
+          failure_reason: string | null
+          fee_kes: number
+          gross_amount_kes: number
+          id: string
+          internal_reference: string
+          mpesa_receipt: string | null
+          net_amount_kes: number
+          phone: string
+          processed_at: string | null
+          processed_by: string | null
+          provider_reference: string | null
+          provider_response: Json | null
+          refunded: boolean
+          refunded_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          approved_at?: string | null
+          balance_deducted?: boolean
+          balance_reserved?: boolean
+          completed_at?: string | null
+          created_at?: string
+          exchange_rate: number
+          failed_at?: string | null
+          failure_reason?: string | null
+          fee_kes?: number
+          gross_amount_kes: number
+          id?: string
+          internal_reference: string
+          mpesa_receipt?: string | null
+          net_amount_kes: number
+          phone: string
+          processed_at?: string | null
+          processed_by?: string | null
+          provider_reference?: string | null
+          provider_response?: Json | null
+          refunded?: boolean
+          refunded_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          approved_at?: string | null
+          balance_deducted?: boolean
+          balance_reserved?: boolean
+          completed_at?: string | null
+          created_at?: string
+          exchange_rate?: number
+          failed_at?: string | null
+          failure_reason?: string | null
+          fee_kes?: number
+          gross_amount_kes?: number
+          id?: string
+          internal_reference?: string
+          mpesa_receipt?: string | null
+          net_amount_kes?: number
+          phone?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          provider_reference?: string | null
+          provider_response?: Json | null
+          refunded?: boolean
+          refunded_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           balance: number
@@ -103,6 +316,42 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_ledger: {
+        Row: {
+          amount_usd: number
+          balance_after: number
+          created_at: string
+          entry_type: string
+          id: string
+          memo: string | null
+          reference_id: string | null
+          reference_type: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_usd: number
+          balance_after: number
+          created_at?: string
+          entry_type: string
+          id?: string
+          memo?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_usd?: number
+          balance_after?: number
+          created_at?: string
+          entry_type?: string
+          id?: string
+          memo?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
           user_id?: string
         }
         Relationships: []
@@ -162,12 +411,37 @@ export type Database = {
         Args: { _withdrawal_id: string }
         Returns: undefined
       }
+      admin_complete_mpesa_withdrawal: {
+        Args: {
+          _mpesa_receipt: string
+          _provider_reference: string
+          _withdrawal_id: string
+        }
+        Returns: undefined
+      }
+      admin_refund_mpesa_withdrawal: {
+        Args: { _reason: string; _withdrawal_id: string }
+        Returns: undefined
+      }
       admin_reject_deposit: {
         Args: { _deposit_id: string }
         Returns: undefined
       }
       admin_reject_withdrawal: {
         Args: { _withdrawal_id: string }
+        Returns: undefined
+      }
+      credit_mpesa_deposit: {
+        Args: {
+          _internal_reference: string
+          _mpesa_receipt: string
+          _provider_reference: string
+          _provider_response: Json
+        }
+        Returns: undefined
+      }
+      fail_mpesa_deposit: {
+        Args: { _internal_reference: string; _reason: string; _response: Json }
         Returns: undefined
       }
       has_role: {
@@ -178,6 +452,18 @@ export type Database = {
         Returns: boolean
       }
       increment_my_trade_count: { Args: never; Returns: number }
+      reserve_mpesa_withdrawal: {
+        Args: {
+          _amount_usd: number
+          _exchange_rate: number
+          _fee_kes: number
+          _gross_kes: number
+          _internal_reference: string
+          _net_kes: number
+          _phone: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

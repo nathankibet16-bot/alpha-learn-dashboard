@@ -36,6 +36,8 @@ type Withdrawal = {
   status: string;
   created_at: string;
 };
+type MpesaDep = { id: string; user_email: string | null; amount_kes: number; credited_amount_usd: number; phone: string; mpesa_receipt: string | null; status: string; credited: boolean; created_at: string };
+type MpesaWd = { id: string; user_email: string | null; amount_usd: number; gross_amount_kes: number; net_amount_kes: number; phone: string; status: string; mpesa_receipt: string | null; created_at: string };
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -43,17 +45,23 @@ function AdminPage() {
   const [open, setOpen] = useState(false);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [mpesaDeposits, setMpesaDeposits] = useState<MpesaDep[]>([]);
+  const [mpesaWithdrawals, setMpesaWithdrawals] = useState<MpesaWd[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [d, w] = await Promise.all([
+    const [d, w, md, mw] = await Promise.all([
       supabase.from("deposits").select("id,user_email,amount,network,address,status,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("withdrawals").select("id,user_email,amount,network,wallet_address,status,created_at").order("created_at", { ascending: false }).limit(100),
+      supabase.from("mpesa_deposits").select("id,user_email,amount_kes,credited_amount_usd,phone,mpesa_receipt,status,credited,created_at").order("created_at", { ascending: false }).limit(100),
+      supabase.from("mpesa_withdrawals").select("id,user_email,amount_usd,gross_amount_kes,net_amount_kes,phone,status,mpesa_receipt,created_at").order("created_at", { ascending: false }).limit(100),
     ]);
     if (d.data) setDeposits(d.data as Deposit[]);
     if (w.data) setWithdrawals(w.data as Withdrawal[]);
+    if (md.data) setMpesaDeposits(md.data as MpesaDep[]);
+    if (mw.data) setMpesaWithdrawals(mw.data as MpesaWd[]);
     setRefreshing(false);
   }, []);
 
@@ -216,6 +224,77 @@ function AdminPage() {
                         <div className="flex gap-2">
                           <ActionBtn onClick={() => approveWithdrawal(w.id)} busy={busyId === w.id} variant="approve" />
                           <ActionBtn onClick={() => rejectWithdrawal(w.id)} busy={busyId === w.id} variant="reject" />
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </section>
+
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold text-emerald-400">M-Pesa Deposits</h2>
+          <TableWrap>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr><Th>User</Th><Th>Phone</Th><Th>KES</Th><Th>USD Credited</Th><Th>Receipt</Th><Th>Status</Th><Th>Time</Th></tr>
+              </thead>
+              <tbody>
+                {mpesaDeposits.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No M-Pesa deposits.</td></tr>}
+                {mpesaDeposits.map((d) => (
+                  <tr key={d.id} className="border-t border-border">
+                    <Td>{d.user_email ?? "—"}</Td>
+                    <Td className="text-xs">{d.phone}</Td>
+                    <Td>KES {Number(d.amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td className="text-emerald-400">${Number(d.credited_amount_usd).toFixed(2)}</Td>
+                    <Td className="text-xs">{d.mpesa_receipt ?? "—"}</Td>
+                    <Td><StatusBadge status={d.status} /></Td>
+                    <Td className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleString()}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </section>
+
+        <section>
+          <h2 className="mb-3 font-display text-lg font-semibold text-emerald-400">M-Pesa Withdrawals</h2>
+          <TableWrap>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr><Th>User</Th><Th>Phone</Th><Th>USD</Th><Th>Gross KES</Th><Th>Net KES</Th><Th>Receipt</Th><Th>Status</Th><Th>Actions</Th></tr>
+              </thead>
+              <tbody>
+                {mpesaWithdrawals.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No M-Pesa withdrawals.</td></tr>}
+                {mpesaWithdrawals.map((w) => (
+                  <tr key={w.id} className="border-t border-border">
+                    <Td>{w.user_email ?? "—"}</Td>
+                    <Td className="text-xs">{w.phone}</Td>
+                    <Td className="text-emerald-400">${Number(w.amount_usd).toFixed(2)}</Td>
+                    <Td>KES {Number(w.gross_amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td>KES {Number(w.net_amount_kes).toLocaleString("en-KE")}</Td>
+                    <Td className="text-xs">{w.mpesa_receipt ?? "—"}</Td>
+                    <Td><StatusBadge status={w.status} /></Td>
+                    <Td>
+                      {w.status === "pending" ? (
+                        <div className="flex gap-2">
+                          <button disabled={busyId === w.id} onClick={async () => {
+                            const receipt = window.prompt("Enter M-Pesa receipt from CloudPay dashboard:");
+                            if (!receipt) return;
+                            setBusyId(w.id);
+                            const { error } = await supabase.rpc("admin_complete_mpesa_withdrawal", { _withdrawal_id: w.id, _mpesa_receipt: receipt, _provider_reference: receipt });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast.success("Withdrawal completed"); void load(); }
+                          }} className="rounded-md bg-emerald-500 px-2 py-1 text-xs font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">Complete</button>
+                          <button disabled={busyId === w.id} onClick={async () => {
+                            const reason = window.prompt("Reason for refund:") ?? "Rejected";
+                            setBusyId(w.id);
+                            const { error } = await supabase.rpc("admin_refund_mpesa_withdrawal", { _withdrawal_id: w.id, _reason: reason });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast("Refunded"); void load(); }
+                          }} className="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-60">Refund</button>
                         </div>
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </Td>
