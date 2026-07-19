@@ -84,11 +84,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Alpha Trader Group — crypto trader portal for tracking balance, deposits, withdrawals, and live markets." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "Alpha Trader Group" },
-      { property: "og:image", content: "https://alphatradergroup.org/__l5e/assets-v1/63f2190b-a8da-4e5a-aaba-0c211eb433b3/logo.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Alpha Trader Group" },
       { name: "twitter:description", content: "Alpha Trader Group — crypto trader portal for tracking balance, deposits, withdrawals, and live markets." },
-      { name: "twitter:image", content: "https://alphatradergroup.org/__l5e/assets-v1/63f2190b-a8da-4e5a-aaba-0c211eb433b3/logo.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

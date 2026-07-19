@@ -18,8 +18,8 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "AlphaTrade Dashboard"
-const ROOT_DOMAIN = "tumame.online"
+const SITE_NAME = "Alpha Traders"
+const ROOT_DOMAIN = "alphatradersgrp.com"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
@@ -33,6 +33,7 @@ const SAMPLE_DATA: Record<string, object> = {
     siteName: SITE_NAME,
     siteUrl: SAMPLE_PROJECT_URL,
     recipient: SAMPLE_EMAIL,
+    token: '123456',
     confirmationUrl: SAMPLE_PROJECT_URL,
   },
   magiclink: {

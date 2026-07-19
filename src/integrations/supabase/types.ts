@@ -56,6 +56,60 @@ export type Database = {
         }
         Relationships: []
       }
+      email_delivery_logs: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          email_type: string
+          environment: string | null
+          error_code: string | null
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          provider: string | null
+          provider_message_id: string | null
+          provider_status: string | null
+          recipient: string
+          sender: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          email_type: string
+          environment?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          provider_status?: string | null
+          recipient: string
+          sender?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          email_type?: string
+          environment?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          provider_status?: string | null
+          recipient?: string
+          sender?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       mpesa_deposits: {
         Row: {
           amount_kes: number

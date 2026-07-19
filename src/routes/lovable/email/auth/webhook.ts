@@ -9,22 +9,20 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "Alpha Trader Group"
-const SENDER_DOMAIN = "notify.alphatradergroup.org"
-const ROOT_DOMAIN = "alphatradergroup.org"
-const FROM_DOMAIN = "notify.alphatradergroup.org"
+const SITE_NAME = "Alpha Traders"
+const SENDER_DOMAIN = "notify.alphatradersgrp.com"
+const ROOT_DOMAIN = "alphatradersgrp.com"
+const FROM_ADDRESS = `Alpha Traders <no-reply@${SENDER_DOMAIN}>`
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
-// The SDK handler owns verification, dispatch, and retry semantics; this file
-// owns only the email decisions: subjects, templates, and per-type props.
 const handler = createAuthEmailHandler({
   apiKey: process.env.LOVABLE_API_KEY!,
-  from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+  from: FROM_ADDRESS,
   senderDomain: SENDER_DOMAIN,
   sendUrl: process.env.LOVABLE_SEND_URL,
   emails: {
     signup: {
-      subject: 'Your verification code',
+      subject: 'Your Alpha Traders verification code',
       render: (data) =>
         React.createElement(SignupEmail, {
           siteName: SITE_NAME,
@@ -35,28 +33,15 @@ const handler = createAuthEmailHandler({
     },
     invite: {
       subject: "You've been invited",
-      render: (data) =>
-        React.createElement(InviteEmail, {
-          siteName: SITE_NAME,
-          siteUrl: SITE_URL,
-          confirmationUrl: data.url,
-        }),
+      render: (data) => React.createElement(InviteEmail, { siteName: SITE_NAME, siteUrl: SITE_URL, confirmationUrl: data.url }),
     },
     magiclink: {
       subject: 'Your login link',
-      render: (data) =>
-        React.createElement(MagicLinkEmail, {
-          siteName: SITE_NAME,
-          confirmationUrl: data.url,
-        }),
+      render: (data) => React.createElement(MagicLinkEmail, { siteName: SITE_NAME, confirmationUrl: data.url }),
     },
     recovery: {
       subject: 'Reset your password',
-      render: (data) =>
-        React.createElement(RecoveryEmail, {
-          siteName: SITE_NAME,
-          confirmationUrl: data.url,
-        }),
+      render: (data) => React.createElement(RecoveryEmail, { siteName: SITE_NAME, confirmationUrl: data.url }),
     },
     email_change: {
       subject: 'Confirm your new email',
@@ -70,9 +55,8 @@ const handler = createAuthEmailHandler({
         }),
     },
     reauthentication: {
-      subject: 'Your verification code',
-      render: (data) =>
-        React.createElement(ReauthenticationEmail, { token: data.token ?? '' }),
+      subject: 'Your Alpha Traders verification code',
+      render: (data) => React.createElement(ReauthenticationEmail, { token: data.token ?? '' }),
     },
   },
 })
@@ -80,7 +64,9 @@ const handler = createAuthEmailHandler({
 export const Route = createFileRoute("/lovable/email/auth/webhook")({
   server: {
     handlers: {
-      POST: ({ request }) => handler(request),
+      POST: async ({ request }) => {
+        return handler(request)
+      },
     },
   },
 })

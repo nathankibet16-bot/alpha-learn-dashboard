@@ -10,19 +10,18 @@ interface SignupEmailProps {
 }
 
 export const SignupEmail = ({ siteName, recipient, token }: SignupEmailProps) => (
-  <Shell preview={`Your ${siteName} verification code is ${token}`}>
-    <Heading style={h1}>Confirm your email</Heading>
+  <Shell preview={`Your verification code is ${token}`}>
+    <Heading style={h1}>Your verification code</Heading>
     <Text style={p}>
-      Welcome to <span style={accent}>{siteName}</span>. Enter the verification
-      code below on the confirmation screen to finish creating your account
-      {recipient ? <> for <span style={{ color: '#ffffff' }}>{recipient}</span></> : null}.
+      Your verification code is:
     </Text>
     <Section style={codeBox}>
       <Text style={codeText}>{token}</Text>
     </Section>
+    <Text style={p}>This code expires in 10 minutes.</Text>
     <Text style={{ ...p, fontSize: '13px' }}>
-      This code expires in 60 minutes. If you didn't create an account, you can
-      safely ignore this email.
+      If you did not request this code, you can ignore this email
+      {recipient ? <> for <span style={{ color: '#ffffff' }}>{recipient}</span></> : null}.
     </Text>
   </Shell>
 )

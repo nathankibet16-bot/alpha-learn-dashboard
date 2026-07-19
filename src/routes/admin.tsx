@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { Menu, ShieldCheck, Check, X, RefreshCw, Loader2 } from "lucide-react";
+import { Menu, ShieldCheck, Check, X, RefreshCw, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/admin";
 import { sendNotificationEmail } from "@/lib/notifications.functions";
+import { getEmailDeliveryLogs, sendAdminTestEmail } from "@/lib/email-delivery.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -38,6 +39,8 @@ type Withdrawal = {
 };
 type MpesaDep = { id: string; user_email: string | null; amount_kes: number; credited_amount_usd: number; phone: string; mpesa_receipt: string | null; status: string; credited: boolean; created_at: string };
 type MpesaWd = { id: string; user_email: string | null; amount_usd: number; gross_amount_kes: number; net_amount_kes: number; phone: string; status: string; mpesa_receipt: string | null; created_at: string };
+type EmailLog = { id: string; recipient: string; email_type: string; provider: string | null; provider_message_id: string | null; sender: string | null; status: string; provider_status: string | null; error_code: string | null; error_message: string | null; environment: string | null; created_at: string };
+type EmailStatusFilter = "all" | "accepted" | "delivered" | "failed" | "bounced" | "rejected" | "suppressed";
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -47,23 +50,32 @@ function AdminPage() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [mpesaDeposits, setMpesaDeposits] = useState<MpesaDep[]>([]);
   const [mpesaWithdrawals, setMpesaWithdrawals] = useState<MpesaWd[]>([]);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [emailFilter, setEmailFilter] = useState<EmailStatusFilter>("all");
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testingEmail, setTestingEmail] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const sendEmail = useServerFn(sendNotificationEmail);
+  const fetchEmailLogs = useServerFn(getEmailDeliveryLogs);
+  const sendTestEmail = useServerFn(sendAdminTestEmail);
 
   const load = useCallback(async () => {
     setRefreshing(true);
-    const [d, w, md, mw] = await Promise.all([
+    const [d, w, md, mw, el] = await Promise.all([
       supabase.from("deposits").select("id,user_email,amount,network,address,status,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("withdrawals").select("id,user_email,amount,network,wallet_address,status,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("mpesa_deposits").select("id,user_email,amount_kes,credited_amount_usd,phone,mpesa_receipt,status,credited,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("mpesa_withdrawals").select("id,user_email,amount_usd,gross_amount_kes,net_amount_kes,phone,status,mpesa_receipt,created_at").order("created_at", { ascending: false }).limit(100),
+      fetchEmailLogs({ data: { status: emailFilter === "all" ? undefined : emailFilter } }),
     ]);
     if (d.data) setDeposits(d.data as Deposit[]);
     if (w.data) setWithdrawals(w.data as Withdrawal[]);
     if (md.data) setMpesaDeposits(md.data as MpesaDep[]);
     if (mw.data) setMpesaWithdrawals(mw.data as MpesaWd[]);
+    setEmailLogs(el as EmailLog[]);
     setRefreshing(false);
-  }, []);
+  }, [emailFilter, fetchEmailLogs]);
 
   useEffect(() => {
     if (loading) return;
@@ -71,9 +83,25 @@ function AdminPage() {
     void load();
   }, [loading, isAdmin, navigate, load]);
 
-  const sendEmail = useServerFn(sendNotificationEmail);
-
   const firstName = (email: string | null) => (email?.split("@")[0] ?? "trader");
+
+  const submitTestEmail = async () => {
+    if (!testRecipient.trim()) return;
+    setTestingEmail(true);
+    try {
+      const result = await sendTestEmail({ data: { recipient: testRecipient.trim() } });
+      if (result.accepted) {
+        toast.success(`Email accepted: ${result.providerMessageId}`);
+      } else {
+        toast.error("Email was not accepted by the provider");
+      }
+      void load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Test email failed");
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   const approveDeposit = async (id: string) => {
     setBusyId(id);
@@ -298,6 +326,48 @@ function AdminPage() {
                         </div>
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </section>
+
+        <section>
+          <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="font-display text-lg font-semibold text-emerald-400">Email Delivery</h2>
+              <p className="text-xs text-muted-foreground">Provider acceptance, sender, and sanitized failure diagnostics.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select value={emailFilter} onChange={(e) => setEmailFilter(e.target.value as EmailStatusFilter)} className="rounded-lg border border-border bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500">
+                {(["all", "accepted", "delivered", "failed", "bounced", "rejected", "suppressed"] as EmailStatusFilter[]).map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div className="flex gap-2">
+                <input value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} type="email" placeholder="test@example.com" className="w-48 rounded-lg border border-border bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                <button onClick={submitTestEmail} disabled={testingEmail || !testRecipient.trim()} className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+                  {testingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Test
+                </button>
+              </div>
+            </div>
+          </div>
+          <TableWrap>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr><Th>Recipient</Th><Th>Type</Th><Th>Sender</Th><Th>Provider ID</Th><Th>Status</Th><Th>Error</Th><Th>Environment</Th><Th>Date</Th></tr>
+              </thead>
+              <tbody>
+                {emailLogs.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No email diagnostics yet.</td></tr>}
+                {emailLogs.map((log) => (
+                  <tr key={log.id} className="border-t border-border">
+                    <Td>{log.recipient}</Td>
+                    <Td>{log.email_type}</Td>
+                    <Td className="max-w-[180px]"><code className="block truncate text-xs">{log.sender ?? "—"}</code></Td>
+                    <Td className="max-w-[170px]"><code className="block truncate text-xs">{log.provider_message_id ?? "—"}</code></Td>
+                    <Td><StatusBadge status={log.status} /></Td>
+                    <Td className="max-w-[240px]"><span className="block truncate text-xs text-muted-foreground">{log.error_code || log.error_message || log.provider_status || "—"}</span></Td>
+                    <Td>{log.environment ?? "—"}</Td>
+                    <Td className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString()}</Td>
                   </tr>
                 ))}
               </tbody>
