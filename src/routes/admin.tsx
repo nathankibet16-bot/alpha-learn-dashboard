@@ -212,7 +212,7 @@ function AdminPage() {
                     <Td className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleString()}</Td>
                     <Td><StatusBadge status={d.status} /></Td>
                     <Td>
-                      {d.status === "pending" ? (
+                      {(d.status === "pending" || d.status === "awaiting_confirmation") ? (
                         <div className="flex gap-2">
                           <ActionBtn onClick={() => approveDeposit(d.id)} busy={busyId === d.id} variant="approve" />
                           <ActionBtn onClick={() => rejectDeposit(d.id)} busy={busyId === d.id} variant="reject" />
