@@ -27,6 +27,7 @@ type SendLoggedEmailInput = {
   userId?: string | null;
   sender?: string;
   senderDomain?: string;
+  replyTo?: string;
   label?: string;
 };
 
@@ -128,6 +129,7 @@ export async function sendLoggedEmail(input: SendLoggedEmailInput): Promise<Send
         purpose: "transactional",
         label: input.label || input.emailType,
         idempotency_key: input.idempotencyKey,
+        reply_to: input.replyTo,
       },
       { apiKey, sendUrl: process.env.LOVABLE_SEND_URL, idempotencyKey: input.idempotencyKey || input.runId },
     );

@@ -59,6 +59,7 @@ export async function sendTemplateEmail(
     text,
     sender: EMAIL_FROM,
     senderDomain: EMAIL_SENDER_DOMAIN,
+    replyTo: options.replyTo,
     label: templateName,
     idempotencyKey: options.idempotencyKey || crypto.randomUUID(),
   })
