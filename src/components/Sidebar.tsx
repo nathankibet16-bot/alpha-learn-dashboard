@@ -1,9 +1,10 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, LineChart, ScrollText, UserCircle, X, LogOut, Bot, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/admin";
+import { useTheme } from "@/lib/theme";
 
 const baseLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -20,6 +21,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const { isAdmin } = useIsAdmin();
+  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
@@ -95,6 +97,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               <p className="truncate text-sm font-medium">{name}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email ?? ""}</p>
             </div>
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <button onClick={logout} className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground">
               <LogOut className="h-4 w-4" />
             </button>
