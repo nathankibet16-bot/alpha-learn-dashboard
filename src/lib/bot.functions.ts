@@ -28,8 +28,8 @@ export const startBotSession = createServerFn({ method: "POST" })
 
 /**
  * Generate one server-side trade for the session and persist it.
- * ~10% chance of loss per tick → yields ~0-2 losses in a typical session.
- * Win: +10%-15% of stake. Loss: -20%-25% of stake. Caps enforced in RPC.
+ * Paced so 80% profit cap is reached over ~10–15 min (≈40–60 trades at 15s cadence).
+ * Win: +1.5%–2.2% of stake. Loss: -2%–3% of stake. Caps enforced in RPC.
  */
 export const tickBotTrade = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -46,20 +46,20 @@ export const tickBotTrade = createServerFn({ method: "POST" })
     const action = secureRand() < 0.5 ? "BUY" : "SELL";
     const drift = (secureRand() - 0.5) * 0.008;
     const entry = Number((asset.base * (1 + drift)).toFixed(asset.dp));
-    // ~96% win rate → typical session has ~1 loss before hitting the 80% profit cap
+    // ~96% win rate → typical session sees ~1–2 losses before hitting the 80% cap
     const isWin = secureRand() < 0.96;
 
     let profit: number;
     let exit: number;
     if (isWin) {
-      // Win: 10%–15% of stake (never zero — floored below)
-      const pct = 0.10 + secureRand() * 0.05;
+      // Win: 1.5%–2.2% of stake — paced so 80% cap arrives near end of session
+      const pct = 0.015 + secureRand() * 0.007;
       profit = Math.max(0.01, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? 1 : -1;
       exit = Number((entry * (1 + dir * 0.0035)).toFixed(asset.dp));
     } else {
-      // Loss: 15%–20% of stake
-      const pct = 0.15 + secureRand() * 0.05;
+      // Loss: 2%–3% of stake
+      const pct = 0.02 + secureRand() * 0.01;
       profit = -Math.max(0.01, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? -1 : 1;
       exit = Number((entry * (1 + dir * 0.0025)).toFixed(asset.dp));
