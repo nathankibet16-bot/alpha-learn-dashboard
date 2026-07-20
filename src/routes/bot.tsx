@@ -139,6 +139,13 @@ function BotPage() {
       try {
         const t = await tickFn({ data: { session_id: sid } });
         if (cancelled) return;
+        // Fully capped tick (applied = 0) → don't render a $0 trade; auto-stop.
+        if (Math.abs(t.profit) < 0.005) {
+          pushLog("Session profit cap reached — closing session");
+          toast.success("Session target reached — finalizing");
+          void handleStop();
+          return;
+        }
         tradeIdRef.current += 1;
         setTrades((prev) => [
           { id: tradeIdRef.current, asset: t.asset, action: t.action as "BUY" | "SELL",
