@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2, Play, Square } from "lucide-react";
+import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2, Play, Square, Loader2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { supabase } from "@/integrations/supabase/client";
 import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
-import { getBalance, setBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
+import { getBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
+import { startBotSession, tickBotTrade, settleBotSession } from "@/lib/bot.functions";
 
 export const Route = createFileRoute("/bot")({
   head: () => ({
