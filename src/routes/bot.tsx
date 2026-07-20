@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2, Play, Square } from "lucide-react";
+import { Menu, ShieldCheck, Zap, TrendingUp, Trophy, Lock, LockOpen, Activity, CheckCircle2, Play, Square, Loader2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { supabase } from "@/integrations/supabase/client";
 import { activateBot, isBotActive, isValidPasskey, incrementTradeCount } from "@/lib/bot-session";
-import { getBalance, setBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
+import { getBalance, syncBalanceFromServer, BALANCE_EVENT } from "@/lib/auth";
+import { startBotSession, tickBotTrade, settleBotSession } from "@/lib/bot.functions";
 
 export const Route = createFileRoute("/bot")({
   head: () => ({
@@ -54,11 +56,15 @@ type Trade = {
 
 function BotPage() {
   const navigate = useNavigate();
+  const startFn = useServerFn(startBotSession);
+  const tickFn = useServerFn(tickBotTrade);
+  const settleFn = useServerFn(settleBotSession);
   const [open, setOpen] = useState(false);
   const [passkey, setPasskey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
   const [running, setRunning] = useState(false);
+  const [settling, setSettling] = useState(false);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
@@ -69,6 +75,7 @@ function BotPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
+  const sessionIdRef = useRef<string | null>(null);
   const logIdRef = useRef(0);
   const tradeIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
@@ -93,14 +100,31 @@ function BotPage() {
     return () => window.removeEventListener(BALANCE_EVENT, handler);
   }, [user]);
 
+
+  // Realtime: subscribe to own profile balance changes so admin approvals / settlements refresh instantly.
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`profile-balance-${user.id}`)
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+        (payload) => {
+          const b = Number((payload.new as { balance?: number }).balance);
+          if (Number.isFinite(b)) setBal(b);
+        })
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [user]);
+
   const pushLog = (text: string) => {
     logIdRef.current += 1;
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs((prev) => [...prev.slice(-40), { id: logIdRef.current, time, text }]);
   };
 
+  // Server-driven trade loop: every 12s ask the server to generate one trade.
   useEffect(() => {
-    if (!running || !user) return;
+    if (!running || !user || !sessionIdRef.current) return;
     pushLog("Session started — connecting to execution engine");
     pushLog("Streaming live market data...");
 
@@ -108,46 +132,38 @@ function BotPage() {
       pushLog(LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)]);
     }, 15000);
 
-    const tradeTimer = setInterval(() => {
-      const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
-      const drift = (Math.random() - 0.5) * 0.008;
-      const entry = Number((asset.base * (1 + drift)).toFixed(asset.base < 10 ? 4 : 2));
-      const win = Math.random() < 0.9;
-      const action: "BUY" | "SELL" = Math.random() < 0.5 ? "BUY" : "SELL";
-      // Payouts scale to the ACTIVE ALLOCATED AMOUNT: each successful run yields 10%–15%.
-      const activeBalance = tradeAmount ?? getBalance(user.id);
-      let profit: number;
-      let price: number;
-      if (win) {
-        const pct = 0.10 + Math.random() * 0.05; // 10% – 15% of allocated balance
-        profit = Number((activeBalance * pct).toFixed(2));
-        const moveDir = action === "BUY" ? 1 : -1;
-        price = Number((entry * (1 + moveDir * 0.0035)).toFixed(asset.base < 10 ? 4 : 2));
-        pushLog(`Trade Successful — ${asset.symbol} +$${profit.toFixed(2)}`);
-        toast.success(`Trade Successful: +$${profit.toFixed(2)}`);
-      } else {
-        const pct = 0.01 + Math.random() * 0.02; // 1% – 3% loss of allocated balance
-        profit = -Number((activeBalance * pct).toFixed(2));
-        const moveDir = action === "BUY" ? -1 : 1;
-        price = Number((entry * (1 + moveDir * 0.0015)).toFixed(asset.base < 10 ? 4 : 2));
-        pushLog(`Trade Closed at loss — ${asset.symbol} $${profit.toFixed(2)}`);
-        toast(`Trade Closed: $${profit.toFixed(2)}`);
+    let cancelled = false;
+    const runTick = async () => {
+      const sid = sessionIdRef.current;
+      if (!sid || cancelled) return;
+      try {
+        const t = await tickFn({ data: { session_id: sid } });
+        if (cancelled) return;
+        tradeIdRef.current += 1;
+        setTrades((prev) => [
+          { id: tradeIdRef.current, asset: t.asset, action: t.action as "BUY" | "SELL",
+            entry: t.entry_price, price: t.exit_price, profit: t.profit },
+          ...prev,
+        ].slice(0, 30));
+        setSessionPnL((p) => Number((p + t.profit).toFixed(2)));
+        if (t.is_win) {
+          pushLog(`Trade Successful — ${t.asset} +$${t.profit.toFixed(2)}`);
+          toast.success(`Trade Successful: +$${t.profit.toFixed(2)}`);
+        } else {
+          pushLog(`Trade Closed at loss — ${t.asset} $${t.profit.toFixed(2)}`);
+          toast(`Trade Closed: $${t.profit.toFixed(2)}`);
+        }
+        if (t.capped) pushLog("Session cap reached — further P/L capped");
+        incrementTradeCount(user.id);
+        void supabase.rpc("increment_my_trade_count");
+      } catch (e) {
+        pushLog(`Tick error: ${e instanceof Error ? e.message : "unknown"}`);
       }
-      tradeIdRef.current += 1;
-      setTrades((prev) => [
-        { id: tradeIdRef.current, asset: asset.symbol, action, entry, price, profit },
-        ...prev,
-      ].slice(0, 30));
-      setSessionPnL((p) => Number((p + profit).toFixed(2)));
-      incrementTradeCount(user.id);
-      void supabase.rpc("increment_my_trade_count");
-    }, 12000);
-
-    return () => {
-      clearInterval(logTimer);
-      clearInterval(tradeTimer);
     };
-  }, [running, user]);
+
+    const tradeTimer = setInterval(() => { void runTick(); }, 12000);
+    return () => { cancelled = true; clearInterval(logTimer); clearInterval(tradeTimer); };
+  }, [running, user, tickFn]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -177,41 +193,57 @@ function BotPage() {
     }
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     const amt = Number(amountInput);
-    if (!Number.isFinite(amt) || amt <= 0) {
-      toast.error("Enter a valid trade amount");
-      return;
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error("Enter a valid trade amount"); return; }
+    if (amt > balance) { toast.error("Amount exceeds current balance"); return; }
+    try {
+      const { session_id } = await startFn({ data: { stake: amt } });
+      sessionIdRef.current = session_id;
+      setTradeAmount(amt);
+      setSessionPnL(0);
+      setTrades([]);
+      setRunning(true);
+      pushLog(`Trade amount set — $${amt.toFixed(2)}`);
+      toast.success(`Session started with $${amt.toFixed(2)}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to start session");
     }
-    if (amt > balance) {
-      toast.error("Amount exceeds current balance");
-      return;
-    }
-    setTradeAmount(amt);
-    setRunning(true);
-    pushLog(`Trade amount set — $${amt.toFixed(2)}`);
-    toast.success(`Session started with $${amt.toFixed(2)}`);
   };
 
   const handleStop = async () => {
-    if (!user) return;
-    setRunning(false);
-    const pnl = sessionPnL;
-    if (pnl !== 0) {
-      const nextBal = Math.max(0, Number((getBalance(user.id) + pnl).toFixed(2)));
-      // Await server write so the dashboard sees the new balance immediately.
-      await setBalance(user.id, nextBal);
+    if (!user || !sessionIdRef.current) { setRunning(false); return; }
+    const sid = sessionIdRef.current;
+    setRunning(false);   // status: stopping (client stops ticking)
+    setSettling(true);   // UI: "Finalizing session results…"
+    pushLog("Session stopping — finalizing settlement…");
+    try {
+      const res = await settleFn({ data: { session_id: sid } });
+      // Refresh balance from server (also arrives via realtime).
       await syncBalanceFromServer(user.id);
-      const sign = pnl >= 0 ? "+" : "";
-      toast.success(`Session ended — ${sign}$${pnl.toFixed(2)} applied to balance`);
-    } else {
-      toast("Session ended");
+      setBal(Number(res.balance_after));
+      const net = Number(res.net_result);
+      const sign = net >= 0 ? "+" : "";
+      if (res.already_settled) {
+        toast(`Session already settled — balance $${Number(res.balance_after).toFixed(2)}`);
+      } else if (net > 0) {
+        toast.success(`Session completed — Profit ${sign}$${net.toFixed(2)}`);
+      } else if (net < 0) {
+        toast(`Session completed — Loss $${net.toFixed(2)}`);
+      } else {
+        toast("Session completed — no change");
+      }
+      pushLog(`Session settled — net ${sign}$${net.toFixed(2)} · new balance $${Number(res.balance_after).toFixed(2)}`);
+    } catch (e) {
+      toast.error(`Settlement failed: ${e instanceof Error ? e.message : "unknown"}`);
+      pushLog("Settlement failed — recovery job will retry");
+    } finally {
+      setSettling(false);
+      sessionIdRef.current = null;
+      setSessionPnL(0);
+      setTradeAmount(null);
+      setAmountInput("");
     }
-    pushLog(`Session stopped — net ${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} applied`);
-    setSessionPnL(0);
-    setTrades([]);
-    setTradeAmount(null);
-    setAmountInput("");
   };
 
   return (
@@ -327,20 +359,24 @@ function BotPage() {
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={handleStart}
-                  disabled={running}
+                  disabled={running || settling}
                   className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Play className="h-4 w-4" /> Start
                 </button>
                 <button
                   onClick={handleStop}
-                  disabled={!running}
+                  disabled={!running || settling}
                   className="flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Square className="h-4 w-4" /> Stop
+                  {settling ? <><Loader2 className="h-4 w-4 animate-spin" /> Finalizing…</> : <><Square className="h-4 w-4" /> Stop</>}
                 </button>
               </div>
+              {settling && (
+                <p className="mt-2 text-center text-xs text-emerald-400">Finalizing session results…</p>
+              )}
             </div>
+
 
             <TradingViewChart symbol="BINANCE:BTCUSDT" title="Bitcoin · BTC/USDT" />
 

@@ -35,11 +35,20 @@ function Dashboard() {
     });
   }, [navigate]);
 
-  // Poll server balance periodically so admin-approved deposits/withdrawals appear.
+  // Realtime: reflect settlement / admin approval instantly.
   useEffect(() => {
     if (!user) return;
-    const t = setInterval(() => { void syncBalanceFromServer(user.id); }, 15000);
-    return () => clearInterval(t);
+    const ch = supabase
+      .channel(`dash-balance-${user.id}`)
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+        (payload) => {
+          const b = Number((payload.new as { balance?: number }).balance);
+          if (Number.isFinite(b)) setBal(b);
+        })
+      .subscribe();
+    const t = setInterval(() => { void syncBalanceFromServer(user.id); }, 30000);
+    return () => { void supabase.removeChannel(ch); clearInterval(t); };
   }, [user]);
 
   useEffect(() => {
