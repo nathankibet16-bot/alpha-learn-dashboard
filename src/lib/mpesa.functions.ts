@@ -194,26 +194,37 @@ export const queryMpesaDepositStatus = createServerFn({ method: "POST" })
     if (!apiKey) return { ok: false, reason: "not_configured" as const };
 
     // Try the reference-based status endpoints CloudPay commonly exposes.
+    // IMPORTANT: prefer provider_reference (CloudPay's own id, e.g. DEP-XXXX)
+    // over our internal_reference (MPD-XXXX). Some CloudPay endpoints only
+    // recognise their own reference and 404 on ours — a 404 is transport,
+    // not a payment failure.
     const candidates = [
-      `${CLOUDPAY_BASE}/api/wallet/deposit/status?reference=${encodeURIComponent(dep.internal_reference)}`,
-      `${CLOUDPAY_BASE}/api/wallet/deposit/${encodeURIComponent(dep.internal_reference)}`,
+      dep.provider_reference
+        ? `${CLOUDPAY_BASE}/api/wallet/deposit/status?reference=${encodeURIComponent(dep.provider_reference)}`
+        : null,
+      dep.provider_reference
+        ? `${CLOUDPAY_BASE}/api/wallet/deposit/${encodeURIComponent(dep.provider_reference)}`
+        : null,
       dep.checkout_request_id
         ? `${CLOUDPAY_BASE}/api/wallet/deposit/status?checkout_request_id=${encodeURIComponent(dep.checkout_request_id)}`
         : null,
+      `${CLOUDPAY_BASE}/api/wallet/deposit/status?reference=${encodeURIComponent(dep.internal_reference)}`,
+      `${CLOUDPAY_BASE}/api/wallet/deposit/${encodeURIComponent(dep.internal_reference)}`,
     ].filter((u): u is string => !!u);
 
     let payload: Record<string, unknown> | null = null;
-    let lastStatus = 0;
+    let httpOk = false;
+    let lastHttpStatus = 0;
     for (const url of candidates) {
       try {
         const res = await fetch(url, {
           method: "GET",
           headers: { "X-API-Key": apiKey, Accept: "application/json" },
         });
-        lastStatus = res.status;
+        lastHttpStatus = res.status;
         const text = await res.text();
         try { payload = JSON.parse(text) as Record<string, unknown>; } catch { payload = { raw: text }; }
-        if (res.ok) break;
+        if (res.ok) { httpOk = true; break; }
       } catch (e) {
         console.error("[mpesa.query] fetch failed", url, e);
       }
@@ -221,11 +232,19 @@ export const queryMpesaDepositStatus = createServerFn({ method: "POST" })
 
     console.log("[mpesa.query] CloudPay status", {
       internal_reference: dep.internal_reference,
-      http_status: lastStatus,
+      provider_reference: dep.provider_reference,
+      checkout_request_id: dep.checkout_request_id,
+      http_ok: httpOk,
+      http_status: lastHttpStatus,
       payload,
     });
 
-    if (!payload) return { ok: false, reason: "unreachable" as const };
+    // Transport / provider unavailability MUST NOT mark the deposit failed.
+    // Keep the row in its current pending/processing state and let the
+    // webhook (or a later status check) resolve it.
+    if (!httpOk || !payload) {
+      return { ok: false, reason: "transient" as const, status: "processing" as const };
+    }
 
     const nested = (payload.data && typeof payload.data === "object") ? payload.data as Record<string, unknown> : null;
     const source = nested ?? payload;
@@ -252,7 +271,9 @@ export const queryMpesaDepositStatus = createServerFn({ method: "POST" })
       return { ok: true, credited: true, status: "completed" as const };
     }
 
-    if (["failed", "cancelled", "canceled", "expired", "error"].includes(providerStatus)) {
+    // Only EXPLICIT final failures from the provider mark the row failed.
+    // "error", "unknown", missing status, etc. are treated as transient.
+    if (["failed", "cancelled", "canceled", "expired", "rejected"].includes(providerStatus)) {
       await supabaseAdmin.rpc("fail_mpesa_deposit", {
         _internal_reference: dep.internal_reference,
         _reason: pickString(source, "reason", "message") ?? providerStatus,
