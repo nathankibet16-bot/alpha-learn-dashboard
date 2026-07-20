@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/public/hooks/mpesa-recovery")({
       POST: async () => {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data, error } = await supabaseAdmin.rpc("expire_stuck_mpesa_deposits", {
-          _older_than_seconds: 180,
+          _older_than_seconds: 1800,
         });
         if (error) {
           console.error("[mpesa-recovery] failed", error);
