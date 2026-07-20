@@ -122,7 +122,7 @@ function BotPage() {
     setLogs((prev) => [...prev.slice(-40), { id: logIdRef.current, time, text }]);
   };
 
-  // Server-driven trade loop: every 15s ask the server to generate one trade (paces 80% cap to ~10–15 min).
+  // Server-driven trade loop: every 30s ask the server to generate one trade (~5-min session to 80% cap).
   useEffect(() => {
     if (!running || !user || !sessionIdRef.current) return;
     pushLog("Session started — connecting to execution engine");
