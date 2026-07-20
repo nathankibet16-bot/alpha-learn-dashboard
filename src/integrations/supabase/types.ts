@@ -607,6 +607,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      expire_stuck_mpesa_deposits: {
+        Args: { _older_than_seconds?: number }
+        Returns: number
+      }
       fail_mpesa_deposit: {
         Args: { _internal_reference: string; _reason: string; _response: Json }
         Returns: undefined
