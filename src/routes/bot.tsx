@@ -168,7 +168,7 @@ function BotPage() {
       }
     };
 
-    const tradeTimer = setInterval(() => { void runTick(); }, 15000);
+    const tradeTimer = setInterval(() => { void runTick(); }, 30000);
     return () => { cancelled = true; clearInterval(logTimer); clearInterval(tradeTimer); };
   }, [running, user, tickFn]);
 
