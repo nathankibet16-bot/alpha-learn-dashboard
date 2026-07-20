@@ -14,6 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
+      bot_sessions: {
+        Row: {
+          balance_after: number | null
+          balance_before: number | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          last_tick_at: string | null
+          ledger_id: string | null
+          loss_count: number
+          max_loss_cap: number
+          max_profit_cap: number
+          net_result: number | null
+          realized_pnl: number
+          settled_at: string | null
+          stake_amount: number
+          started_at: string
+          status: string
+          trade_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_after?: number | null
+          balance_before?: number | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          last_tick_at?: string | null
+          ledger_id?: string | null
+          loss_count?: number
+          max_loss_cap: number
+          max_profit_cap: number
+          net_result?: number | null
+          realized_pnl?: number
+          settled_at?: string | null
+          stake_amount: number
+          started_at?: string
+          status?: string
+          trade_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_after?: number | null
+          balance_before?: number | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          last_tick_at?: string | null
+          ledger_id?: string | null
+          loss_count?: number
+          max_loss_cap?: number
+          max_profit_cap?: number
+          net_result?: number | null
+          realized_pnl?: number
+          settled_at?: string | null
+          stake_amount?: number
+          started_at?: string
+          status?: string
+          trade_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bot_trades: {
+        Row: {
+          action: string
+          asset: string
+          created_at: string
+          entry_price: number
+          exit_price: number
+          id: string
+          is_win: boolean
+          profit_usd: number
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          asset: string
+          created_at?: string
+          entry_price: number
+          exit_price: number
+          id?: string
+          is_win: boolean
+          profit_usd: number
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          asset?: string
+          created_at?: string
+          entry_price?: number
+          exit_price?: number
+          id?: string
+          is_win?: boolean
+          profit_usd?: number
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_trades_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bot_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deposits: {
         Row: {
           address: string
@@ -506,6 +619,22 @@ export type Database = {
         Returns: boolean
       }
       increment_my_trade_count: { Args: never; Returns: number }
+      record_bot_trade: {
+        Args: {
+          _action: string
+          _asset: string
+          _entry: number
+          _exit: number
+          _is_win: boolean
+          _profit: number
+          _session_id: string
+        }
+        Returns: Json
+      }
+      recover_stuck_bot_sessions: {
+        Args: { _older_than_seconds?: number }
+        Returns: number
+      }
       reserve_mpesa_withdrawal: {
         Args: {
           _amount_usd: number
@@ -518,6 +647,8 @@ export type Database = {
         }
         Returns: string
       }
+      settle_bot_session: { Args: { _session_id: string }; Returns: Json }
+      start_bot_session: { Args: { _stake: number }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
