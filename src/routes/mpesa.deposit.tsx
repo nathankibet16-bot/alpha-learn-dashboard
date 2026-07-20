@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { initiateMpesaDeposit, getMpesaDepositStatus, queryMpesaDepositStatus } from "@/lib/mpesa.functions";
+import { initiateMpesaDeposit, getMpesaDepositStatus, queryMpesaDepositStatus, submitManualMpesaDeposit } from "@/lib/mpesa.functions";
 import { syncBalanceFromServer } from "@/lib/auth";
 
 export const Route = createFileRoute("/mpesa/deposit")({
