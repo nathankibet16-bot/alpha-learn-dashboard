@@ -254,12 +254,20 @@ function MpesaDepositPage() {
                 <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Waiting for payment
                 </span>
+                {showManualCheck && (
+                  <button onClick={manualCheck} disabled={checking}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-60">
+                    {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Check payment status
+                  </button>
+                )}
               </div>
             )}
             {status === "success" && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <CheckCircle2 className="h-12 w-12 text-emerald-400" />
-                <p className="font-semibold text-emerald-300">Payment received</p>
+                <p className="font-semibold text-emerald-300">Deposit successful</p>
+                <p className="text-sm text-foreground">KES {fmt(creditedKes)} has been received and added to your account.</p>
                 {receipt && <p className="text-xs text-muted-foreground">M-Pesa receipt: {receipt}</p>}
                 <Link to="/dashboard" className="mt-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black">Back to dashboard</Link>
               </div>
