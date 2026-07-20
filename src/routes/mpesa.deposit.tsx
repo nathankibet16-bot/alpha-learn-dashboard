@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Smartphone, Loader2, CheckCircle2, XCircle, Bitcoin } from "lucide-react";
+import { Menu, Smartphone, Loader2, CheckCircle2, XCircle, Bitcoin, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { initiateMpesaDeposit, getMpesaDepositStatus } from "@/lib/mpesa.functions";
+import { initiateMpesaDeposit, getMpesaDepositStatus, queryMpesaDepositStatus } from "@/lib/mpesa.functions";
 import { syncBalanceFromServer } from "@/lib/auth";
 
 export const Route = createFileRoute("/mpesa/deposit")({
@@ -15,12 +15,16 @@ export const Route = createFileRoute("/mpesa/deposit")({
 
 const PRESETS = [500, 1000, 3000, 5000, 10000];
 const MIN = 500;
+const POLL_MS = 3000;
+const QUERY_AFTER_MS = 15000;
+const MANUAL_CHECK_AFTER_MS = 120000;
 const fmt = (n: number) => n.toLocaleString("en-KE");
 
 function MpesaDepositPage() {
   const navigate = useNavigate();
   const initiate = useServerFn(initiateMpesaDeposit);
   const getStatus = useServerFn(getMpesaDepositStatus);
+  const queryStatus = useServerFn(queryMpesaDepositStatus);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [amount, setAmount] = useState(500);
@@ -31,7 +35,11 @@ function MpesaDepositPage() {
   const [depositId, setDepositId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "waiting" | "success" | "failed">("idle");
   const [receipt, setReceipt] = useState<string | null>(null);
+  const [creditedKes, setCreditedKes] = useState<number>(0);
+  const [showManualCheck, setShowManualCheck] = useState(false);
+  const [checking, setChecking] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const queryTriggered = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -41,32 +49,60 @@ function MpesaDepositPage() {
       .then(({ data }) => { if (data) { setRate(Number(data.kes_to_usd_rate)); setFee(Number(data.deposit_fee_kes)); } });
   }, [navigate]);
 
+  const finalizeSuccess = async (r: { mpesa_receipt: string | null; amount_kes: number }) => {
+    setStatus("success");
+    setReceipt(r.mpesa_receipt);
+    setCreditedKes(r.amount_kes || amount);
+    if (pollRef.current) clearInterval(pollRef.current);
+    const { data } = await supabase.auth.getUser();
+    if (data.user) await syncBalanceFromServer(data.user.id);
+    toast.success("Deposit successful");
+  };
+
   useEffect(() => {
     if (!depositId || status !== "waiting") return;
     let elapsed = 0;
+    queryTriggered.current = false;
+    setShowManualCheck(false);
     pollRef.current = setInterval(async () => {
-      elapsed += 4;
+      elapsed += POLL_MS;
       try {
         const r = await getStatus({ data: { deposit_id: depositId } });
         if (r.credited) {
-          setStatus("success");
-          setReceipt(r.mpesa_receipt);
-          const { data } = await supabase.auth.getUser();
-          if (data.user) await syncBalanceFromServer(data.user.id);
-          toast.success("Deposit received");
-          if (pollRef.current) clearInterval(pollRef.current);
-        } else if (["failed", "cancelled", "expired"].includes(r.status ?? "")) {
+          await finalizeSuccess({ mpesa_receipt: r.mpesa_receipt, amount_kes: Number(r.amount_kes ?? amount) });
+          return;
+        }
+        if (["failed", "cancelled", "expired"].includes(r.status ?? "")) {
           setStatus("failed");
           if (pollRef.current) clearInterval(pollRef.current);
+          return;
         }
       } catch { /* ignore transient errors */ }
-      if (elapsed >= 180) {
-        setStatus("failed");
-        if (pollRef.current) clearInterval(pollRef.current);
+
+      // Backend fallback query if webhook is late.
+      if (!queryTriggered.current && elapsed >= QUERY_AFTER_MS) {
+        queryTriggered.current = true;
+        try {
+          const q = await queryStatus({ data: { deposit_id: depositId } });
+          if (q.ok && q.credited) {
+            const r2 = await getStatus({ data: { deposit_id: depositId } });
+            await finalizeSuccess({ mpesa_receipt: r2.mpesa_receipt, amount_kes: Number(r2.amount_kes ?? amount) });
+            return;
+          }
+          if (q.ok && (q as { status?: string }).status && ["failed", "cancelled", "expired"].includes((q as { status: string }).status)) {
+            setStatus("failed");
+            if (pollRef.current) clearInterval(pollRef.current);
+            return;
+          }
+        } catch { /* ignore */ }
       }
-    }, 4000);
+
+      if (elapsed >= MANUAL_CHECK_AFTER_MS) {
+        setShowManualCheck(true);
+      }
+    }, POLL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [depositId, status, getStatus]);
+  }, [depositId, status, getStatus, queryStatus, amount]);
 
 
   const total = amount + fee;
@@ -84,6 +120,26 @@ function MpesaDepositPage() {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally { setSubmitting(false); }
   };
+
+  const manualCheck = async () => {
+    if (!depositId) return;
+    setChecking(true);
+    try {
+      const q = await queryStatus({ data: { deposit_id: depositId } });
+      if (q.ok && q.credited) {
+        const r2 = await getStatus({ data: { deposit_id: depositId } });
+        await finalizeSuccess({ mpesa_receipt: r2.mpesa_receipt, amount_kes: Number(r2.amount_kes ?? amount) });
+      } else if (q.ok && (q as { status?: string }).status && ["failed", "cancelled", "expired"].includes((q as { status: string }).status)) {
+        setStatus("failed");
+        if (pollRef.current) clearInterval(pollRef.current);
+      } else {
+        toast.info("Payment still processing — try again in a few seconds.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Check failed");
+    } finally { setChecking(false); }
+  };
+
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground">
