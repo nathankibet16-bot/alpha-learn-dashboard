@@ -153,6 +153,33 @@ function MpesaDepositPage() {
     } finally { setChecking(false); }
   };
 
+  const openManualForm = () => {
+    setManualCode("");
+    setManualPhone(phone);
+    setManualAmount(amount);
+    setManualOpen(true);
+  };
+
+  const submitManualForm = async () => {
+    const code = manualCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6,24}$/.test(code)) { toast.error("Enter a valid M-Pesa transaction code"); return; }
+    if (manualPhone.replace(/\D/g, "").length < 9) { toast.error("Enter a valid phone number"); return; }
+    if (!Number.isInteger(manualAmount) || manualAmount < MIN) { toast.error(`Minimum amount is KES ${fmt(MIN)}`); return; }
+    setManualSubmitting(true);
+    try {
+      await submitManual({ data: { amount_kes: manualAmount, phone: manualPhone, mpesa_code: code } });
+      if (pollRef.current) clearInterval(pollRef.current);
+      setStatus("manual_submitted");
+      setManualOpen(false);
+      toast.success("Deposit submitted for verification");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to submit");
+    } finally { setManualSubmitting(false); }
+  };
+
+
+
+
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground">
