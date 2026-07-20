@@ -28,6 +28,7 @@ function MpesaDepositPage() {
   const initiate = useServerFn(initiateMpesaDeposit);
   const getStatus = useServerFn(getMpesaDepositStatus);
   const queryStatus = useServerFn(queryMpesaDepositStatus);
+  const submitManual = useServerFn(submitManualMpesaDeposit);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [amount, setAmount] = useState(500);
@@ -36,11 +37,17 @@ function MpesaDepositPage() {
   const [fee, setFee] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [depositId, setDepositId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "waiting" | "success" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "waiting" | "success" | "failed" | "manual_submitted">("idle");
   const [receipt, setReceipt] = useState<string | null>(null);
   const [creditedKes, setCreditedKes] = useState<number>(0);
   const [showManualCheck, setShowManualCheck] = useState(false);
+  const [showManualTill, setShowManualTill] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualAmount, setManualAmount] = useState<number>(0);
+  const [manualSubmitting, setManualSubmitting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const queryTriggered = useRef(false);
 
