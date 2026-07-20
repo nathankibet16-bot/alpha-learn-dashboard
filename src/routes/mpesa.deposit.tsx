@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { Sidebar } from "@/components/Sidebar";
 import { supabase } from "@/integrations/supabase/client";
-import { initiateMpesaDeposit, getMpesaDepositStatus, queryMpesaDepositStatus } from "@/lib/mpesa.functions";
+import { initiateMpesaDeposit, getMpesaDepositStatus, queryMpesaDepositStatus, submitManualMpesaDeposit } from "@/lib/mpesa.functions";
 import { syncBalanceFromServer } from "@/lib/auth";
 
 export const Route = createFileRoute("/mpesa/deposit")({
@@ -18,6 +18,9 @@ const MIN = 500;
 const POLL_MS = 3000;
 const QUERY_AFTER_MS = 15000;
 const MANUAL_CHECK_AFTER_MS = 120000;
+const MANUAL_TILL_AFTER_MS = 60000;
+const TILL_NUMBER = "3405451";
+const TILL_NAME = "TUMAME NETWORKS";
 const fmt = (n: number) => n.toLocaleString("en-KE");
 
 function MpesaDepositPage() {
@@ -25,6 +28,7 @@ function MpesaDepositPage() {
   const initiate = useServerFn(initiateMpesaDeposit);
   const getStatus = useServerFn(getMpesaDepositStatus);
   const queryStatus = useServerFn(queryMpesaDepositStatus);
+  const submitManual = useServerFn(submitManualMpesaDeposit);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [amount, setAmount] = useState(500);
@@ -33,11 +37,17 @@ function MpesaDepositPage() {
   const [fee, setFee] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [depositId, setDepositId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "waiting" | "success" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "waiting" | "success" | "failed" | "manual_submitted">("idle");
   const [receipt, setReceipt] = useState<string | null>(null);
   const [creditedKes, setCreditedKes] = useState<number>(0);
   const [showManualCheck, setShowManualCheck] = useState(false);
+  const [showManualTill, setShowManualTill] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualAmount, setManualAmount] = useState<number>(0);
+  const [manualSubmitting, setManualSubmitting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const queryTriggered = useRef(false);
 
@@ -64,6 +74,7 @@ function MpesaDepositPage() {
     let elapsed = 0;
     queryTriggered.current = false;
     setShowManualCheck(false);
+    setShowManualTill(false);
     pollRef.current = setInterval(async () => {
       elapsed += POLL_MS;
       try {
@@ -96,6 +107,9 @@ function MpesaDepositPage() {
         } catch { /* ignore — keep waiting */ }
       }
 
+      if (elapsed >= MANUAL_TILL_AFTER_MS) {
+        setShowManualTill(true);
+      }
       if (elapsed >= MANUAL_CHECK_AFTER_MS) {
         setShowManualCheck(true);
       }
@@ -138,6 +152,33 @@ function MpesaDepositPage() {
       toast.info("We are still confirming your payment.");
     } finally { setChecking(false); }
   };
+
+  const openManualForm = () => {
+    setManualCode("");
+    setManualPhone(phone);
+    setManualAmount(amount);
+    setManualOpen(true);
+  };
+
+  const submitManualForm = async () => {
+    const code = manualCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6,24}$/.test(code)) { toast.error("Enter a valid M-Pesa transaction code"); return; }
+    if (manualPhone.replace(/\D/g, "").length < 9) { toast.error("Enter a valid phone number"); return; }
+    if (!Number.isInteger(manualAmount) || manualAmount < MIN) { toast.error(`Minimum amount is KES ${fmt(MIN)}`); return; }
+    setManualSubmitting(true);
+    try {
+      await submitManual({ data: { amount_kes: manualAmount, phone: manualPhone, mpesa_code: code } });
+      if (pollRef.current) clearInterval(pollRef.current);
+      setStatus("manual_submitted");
+      setManualOpen(false);
+      toast.success("Deposit submitted for verification");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to submit");
+    } finally { setManualSubmitting(false); }
+  };
+
+
+
 
 
   return (
@@ -260,6 +301,66 @@ function MpesaDepositPage() {
                     Check payment status
                   </button>
                 )}
+
+                {showManualTill && !manualOpen && (
+                  <div className="mt-4 w-full space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-left">
+                    <p className="text-center text-sm font-semibold text-emerald-300">Pay manually using M-Pesa Till</p>
+                    <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                      <li>Open M-Pesa.</li>
+                      <li>Select <span className="text-foreground">Lipa na M-Pesa</span>.</li>
+                      <li>Select <span className="text-foreground">Buy Goods and Services</span>.</li>
+                      <li>Enter Till Number: <span className="font-mono font-semibold text-emerald-300">{TILL_NUMBER}</span></li>
+                      <li>Confirm the Till name is <span className="font-semibold text-foreground">{TILL_NAME}</span>.</li>
+                      <li>Enter the exact deposit amount (KES {fmt(amount)}).</li>
+                      <li>Complete payment and copy the M-Pesa transaction code.</li>
+                    </ol>
+                    <button onClick={openManualForm}
+                      className="w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-black hover:bg-emerald-400">
+                      Already paid? Verify deposit
+                    </button>
+                  </div>
+                )}
+
+                {manualOpen && (
+                  <div className="mt-4 w-full space-y-3 rounded-xl border border-border bg-zinc-950 p-4 text-left">
+                    <p className="text-center text-sm font-semibold">Verify M-Pesa payment</p>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">M-Pesa transaction code</span>
+                      <input value={manualCode} onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. QK7A2BXYZ1" maxLength={24}
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 font-mono text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">Phone number</span>
+                      <input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)}
+                        placeholder="0712 345 678"
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">Amount paid (KES)</span>
+                      <input type="number" min={MIN} value={manualAmount || ""}
+                        onChange={(e) => setManualAmount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setManualOpen(false)}
+                        className="flex-1 rounded-lg border border-border py-2 text-xs text-muted-foreground">Cancel</button>
+                      <button onClick={submitManualForm} disabled={manualSubmitting}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+                        {manualSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Submit for verification
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {status === "manual_submitted" && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+                <p className="font-semibold text-emerald-300">Deposit submitted</p>
+                <p className="text-sm text-muted-foreground">Your payment will be verified and reflected in your account shortly.</p>
+                <Link to="/dashboard" className="mt-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black">Back to dashboard</Link>
               </div>
             )}
             {status === "success" && (

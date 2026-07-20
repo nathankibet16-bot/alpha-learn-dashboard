@@ -285,6 +285,62 @@ export const queryMpesaDepositStatus = createServerFn({ method: "POST" })
     return { ok: true, credited: false, status: "processing" as const };
   });
 
+const ManualDepositInput = z.object({
+  amount_kes: z.number().int().positive(),
+  phone: z.string().min(9),
+  mpesa_code: z.string().trim().min(6).max(24),
+});
+
+/** Manual M-Pesa Till fallback — user submits their own transaction code for admin verification. Never credits directly. */
+export const submitManualMpesaDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => ManualDepositInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const phone = normalizePhone(data.phone);
+    if (!phone) throw new Error("Invalid Kenyan phone number");
+    const code = data.mpesa_code.toUpperCase().replace(/\s+/g, "");
+    if (!/^[A-Z0-9]{6,24}$/.test(code)) throw new Error("Invalid M-Pesa transaction code");
+
+    const { supabase, userId } = context;
+    const { data: profile } = await supabase.from("profiles").select("email").eq("id", userId).maybeSingle();
+    const { data: settings } = await supabase.from("mpesa_settings").select("*").eq("id", true).maybeSingle();
+    if (!settings) throw new Error("Payment settings unavailable");
+    if (data.amount_kes < settings.min_deposit_kes) throw new Error(`Minimum deposit is KES ${settings.min_deposit_kes}`);
+
+    const rate = Number(settings.kes_to_usd_rate);
+    const creditedUsd = Number((data.amount_kes / rate).toFixed(2));
+    const internalRef = genRef("MPM");
+
+    // Reject duplicate M-Pesa codes (unique index also enforces this).
+    const { data: existing } = await supabase
+      .from("mpesa_deposits").select("id,credited,user_id").eq("mpesa_receipt", code).maybeSingle();
+    if (existing) throw new Error("This M-Pesa code has already been submitted");
+
+    const { data: inserted, error } = await supabase.from("mpesa_deposits").insert({
+      user_id: userId,
+      user_email: profile?.email ?? null,
+      internal_reference: internalRef,
+      amount_kes: data.amount_kes,
+      exchange_rate: rate,
+      credited_amount_usd: creditedUsd,
+      fee_kes: 0,
+      total_paid_kes: data.amount_kes,
+      phone,
+      mpesa_receipt: code,
+      status: "awaiting_verification",
+    }).select("id").single();
+    if (error) {
+      if (error.code === "23505" || /duplicate/i.test(error.message)) {
+        throw new Error("This M-Pesa code has already been submitted");
+      }
+      throw new Error(error.message);
+    }
+
+    console.log("[mpesa.manual] submitted", { deposit_id: inserted.id, internal_reference: internalRef, code });
+    return { deposit_id: inserted.id, internal_reference: internalRef };
+  });
+
+
 const WithdrawInput = z.object({
   amount_kes: z.number().int().positive(),
   phone: z.string().min(9),
