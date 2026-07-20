@@ -598,6 +598,10 @@ export type Database = {
         Args: { _withdrawal_id: string }
         Returns: undefined
       }
+      admin_verify_manual_mpesa_deposit: {
+        Args: { _approve: boolean; _deposit_id: string; _reason?: string }
+        Returns: undefined
+      }
       attach_mpesa_provider_ids: {
         Args: {
           _checkout_request_id: string
