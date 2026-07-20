@@ -35,11 +35,17 @@ export const tickBotTrade = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ session_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    // Read session to know stake
     const { data: session, error: sErr } = await context.supabase
       .from("bot_sessions").select("stake_amount,status,started_at,realized_pnl").eq("id", data.session_id).maybeSingle();
     if (sErr) throw new Error(sErr.message);
     if (!session || session.status !== "running") throw new Error("Session not running");
+
+    // Count losses so far — we only allow ~one per session.
+    const { count: lossCount } = await context.supabase
+      .from("bot_trades")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", data.session_id)
+      .eq("is_win", false);
 
     const stake = Number(session.stake_amount);
     const realized = Number(session.realized_pnl ?? 0);
@@ -48,41 +54,42 @@ export const tickBotTrade = createServerFn({ method: "POST" })
     const action = secureRand() < 0.5 ? "BUY" : "SELL";
     const drift = (secureRand() - 0.5) * 0.008;
     const entry = Number((asset.base * (1 + drift)).toFixed(asset.dp));
-    const isWin = secureRand() < 0.96;
 
-    // Variable payout by time window with a soft governor so we still land near
-    // the 80% cap around the 10–15 min mark instead of overshooting early.
-    // Boost windows: 60–150s and 360–480s → occasional larger wins.
-    // Governor: if realized pnl is already ahead of the ideal glide-path
-    // (linear to 80% of stake over 12 min), shrink payouts; if behind, allow bigger ones.
-    const targetPct = Math.min(0.8, (elapsedSec / (12 * 60)) * 0.8);
+    // ~5 minute session glide-path toward 80% of stake.
+    const SESSION_SEC = 5 * 60;
+    const targetPct = Math.min(0.8, (elapsedSec / SESSION_SEC) * 0.8);
     const currentPct = stake > 0 ? realized / stake : 0;
-    const ahead = currentPct - targetPct; // >0 means ahead of schedule
+    const ahead = currentPct - targetPct;
 
-    const inBoost1 = elapsedSec >= 60 && elapsedSec <= 150;
-    const inBoost2 = elapsedSec >= 360 && elapsedSec <= 480;
-    const boostRoll = secureRand();
-    // In boost windows, ~35% chance of a chunky payout; otherwise small/steady
-    const isBoost = (inBoost1 || inBoost2) && boostRoll < 0.35 && ahead < 0.05;
+    // Apply exactly one loss per session, mid-run, when we're ahead of pace.
+    const allowLoss = (lossCount ?? 0) < 1
+      && elapsedSec > 60
+      && elapsedSec < SESSION_SEC - 30
+      && ahead > 0.05
+      && secureRand() < 0.2;
+    const isWin = !allowLoss;
 
     let profit: number;
     let exit: number;
     if (isWin) {
+      // Wins never pay less than 10% of stake. Boost windows push higher.
+      const inBoost1 = elapsedSec >= 45 && elapsedSec <= 120;
+      const inBoost2 = elapsedSec >= 180 && elapsedSec <= 260;
       let pct: number;
-      if (isBoost) {
-        pct = 0.04 + secureRand() * 0.035;      // 4%–7.5% of stake
-      } else if (ahead > 0.03) {
-        pct = 0.003 + secureRand() * 0.007;     // cool-down: 0.3%–1%
+      if (ahead > 0.05) {
+        pct = 0.10;                              // floor while cooling down
+      } else if ((inBoost1 || inBoost2) && ahead < 0.02) {
+        pct = 0.15 + secureRand() * 0.05;        // boost: 15%–20%
       } else if (ahead < -0.05) {
-        pct = 0.02 + secureRand() * 0.015;      // catch-up: 2%–3.5%
+        pct = 0.13 + secureRand() * 0.04;        // catch-up: 13%–17%
       } else {
-        pct = 0.008 + secureRand() * 0.012;     // steady: 0.8%–2%
+        pct = 0.10 + secureRand() * 0.03;        // steady: 10%–13%
       }
-      profit = Math.max(0.01, Number((stake * pct).toFixed(2)));
+      profit = Math.max(stake * 0.10, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? 1 : -1;
       exit = Number((entry * (1 + dir * 0.0035)).toFixed(asset.dp));
     } else {
-      const pct = 0.015 + secureRand() * 0.015; // Loss: 1.5%–3% of stake
+      const pct = 0.05 + secureRand() * 0.03;    // single loss: 5%–8% of stake
       profit = -Math.max(0.01, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? -1 : 1;
       exit = Number((entry * (1 + dir * 0.0025)).toFixed(asset.dp));
