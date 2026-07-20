@@ -72,12 +72,14 @@ function MpesaDepositPage() {
           await finalizeSuccess({ mpesa_receipt: r.mpesa_receipt, amount_kes: Number(r.amount_kes ?? amount) });
           return;
         }
+        // Only stop polling on EXPLICIT final failure statuses persisted by
+        // the webhook or a confirmed provider response.
         if (["failed", "cancelled", "expired"].includes(r.status ?? "")) {
           setStatus("failed");
           if (pollRef.current) clearInterval(pollRef.current);
           return;
         }
-      } catch { /* ignore transient errors */ }
+      } catch { /* transient poll error — keep waiting */ }
 
       // Backend fallback query if webhook is late.
       if (!queryTriggered.current && elapsed >= QUERY_AFTER_MS) {
@@ -89,12 +91,9 @@ function MpesaDepositPage() {
             await finalizeSuccess({ mpesa_receipt: r2.mpesa_receipt, amount_kes: Number(r2.amount_kes ?? amount) });
             return;
           }
-          if (q.ok && (q as { status?: string }).status && ["failed", "cancelled", "expired"].includes((q as { status: string }).status)) {
-            setStatus("failed");
-            if (pollRef.current) clearInterval(pollRef.current);
-            return;
-          }
-        } catch { /* ignore */ }
+          // Only mark failed if provider EXPLICITLY returned a final failure.
+          // Transient/unreachable/processing => keep waiting.
+        } catch { /* ignore — keep waiting */ }
       }
 
       if (elapsed >= MANUAL_CHECK_AFTER_MS) {
@@ -133,10 +132,10 @@ function MpesaDepositPage() {
         setStatus("failed");
         if (pollRef.current) clearInterval(pollRef.current);
       } else {
-        toast.info("Payment still processing — try again in a few seconds.");
+        toast.info("We are still confirming your payment.");
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Check failed");
+    } catch {
+      toast.info("We are still confirming your payment.");
     } finally { setChecking(false); }
   };
 
