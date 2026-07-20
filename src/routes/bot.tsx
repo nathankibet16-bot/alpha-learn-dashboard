@@ -56,11 +56,15 @@ type Trade = {
 
 function BotPage() {
   const navigate = useNavigate();
+  const startFn = useServerFn(startBotSession);
+  const tickFn = useServerFn(tickBotTrade);
+  const settleFn = useServerFn(settleBotSession);
   const [open, setOpen] = useState(false);
   const [passkey, setPasskey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [activated, setActivated] = useState(false);
   const [running, setRunning] = useState(false);
+  const [settling, setSettling] = useState(false);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [balance, setBal] = useState(0);
@@ -71,6 +75,7 @@ function BotPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
+  const sessionIdRef = useRef<string | null>(null);
   const logIdRef = useRef(0);
   const tradeIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
