@@ -129,12 +129,12 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
     // Persist provider IDs via SECURITY DEFINER RPC (bypasses missing UPDATE policy).
     const { error: attachErr } = await supabase.rpc("attach_mpesa_provider_ids", {
       _internal_reference: internalRef,
-      _provider_reference: providerRef,
-      _checkout_request_id: checkoutRequestId,
-      _merchant_request_id: merchantRequestId,
+      _provider_reference: providerRef as unknown as string,
+      _checkout_request_id: checkoutRequestId as unknown as string,
+      _merchant_request_id: merchantRequestId as unknown as string,
       _provider_response: providerResponse as never,
       _status: ok ? "processing" : "failed",
-      _failure_reason: ok ? null : providerError,
+      _failure_reason: (ok ? null : providerError) as unknown as string,
     });
     if (attachErr) {
       console.error("[mpesa.initiate] attach_mpesa_provider_ids failed", attachErr);
