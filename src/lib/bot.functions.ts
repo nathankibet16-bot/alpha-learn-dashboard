@@ -46,21 +46,25 @@ export const tickBotTrade = createServerFn({ method: "POST" })
     const action = secureRand() < 0.5 ? "BUY" : "SELL";
     const drift = (secureRand() - 0.5) * 0.008;
     const entry = Number((asset.base * (1 + drift)).toFixed(asset.dp));
-    const isWin = secureRand() < 0.9;
+    // ~96% win rate → typical session has ~1 loss before hitting the 80% profit cap
+    const isWin = secureRand() < 0.96;
 
     let profit: number;
     let exit: number;
     if (isWin) {
+      // Win: 10%–15% of stake (never zero — floored below)
       const pct = 0.10 + secureRand() * 0.05;
-      profit = Number((stake * pct).toFixed(2));
+      profit = Math.max(0.01, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? 1 : -1;
       exit = Number((entry * (1 + dir * 0.0035)).toFixed(asset.dp));
     } else {
-      const pct = 0.20 + secureRand() * 0.05;
-      profit = -Number((stake * pct).toFixed(2));
+      // Loss: 15%–20% of stake
+      const pct = 0.15 + secureRand() * 0.05;
+      profit = -Math.max(0.01, Number((stake * pct).toFixed(2)));
       const dir = action === "BUY" ? -1 : 1;
       exit = Number((entry * (1 + dir * 0.0025)).toFixed(asset.dp));
     }
+
 
     const { data: res, error: rErr } = await context.supabase.rpc("record_bot_trade", {
       _session_id: data.session_id,
