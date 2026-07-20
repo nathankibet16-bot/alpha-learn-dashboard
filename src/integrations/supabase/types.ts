@@ -598,6 +598,18 @@ export type Database = {
         Args: { _withdrawal_id: string }
         Returns: undefined
       }
+      attach_mpesa_provider_ids: {
+        Args: {
+          _checkout_request_id: string
+          _failure_reason: string
+          _internal_reference: string
+          _merchant_request_id: string
+          _provider_reference: string
+          _provider_response: Json
+          _status: string
+        }
+        Returns: undefined
+      }
       credit_mpesa_deposit: {
         Args: {
           _internal_reference: string
@@ -648,6 +660,14 @@ export type Database = {
           _internal_reference: string
           _net_kes: number
           _phone: string
+        }
+        Returns: string
+      }
+      resolve_mpesa_deposit_ref: {
+        Args: {
+          _checkout_request_id: string
+          _internal_reference: string
+          _provider_reference: string
         }
         Returns: string
       }
