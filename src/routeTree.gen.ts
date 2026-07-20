@@ -28,6 +28,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicWebhooksCloudpayRouteImport } from './routes/api/public/webhooks/cloudpay'
+import { Route as ApiPublicHooksBotRecoveryRouteImport } from './routes/api/public/hooks/bot-recovery'
 
 const WithdrawRoute = WithdrawRouteImport.update({
   id: '/withdraw',
@@ -126,6 +127,12 @@ const ApiPublicWebhooksCloudpayRoute =
     path: '/api/public/webhooks/cloudpay',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksBotRecoveryRoute =
+  ApiPublicHooksBotRecoveryRouteImport.update({
+    id: '/api/public/hooks/bot-recovery',
+    path: '/api/public/hooks/bot-recovery',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/mpesa/deposit': typeof MpesaDepositRoute
   '/mpesa/withdraw': typeof MpesaWithdrawRoute
   '/lovable/email/events': typeof LovableEmailEventsRoute
+  '/api/public/hooks/bot-recovery': typeof ApiPublicHooksBotRecoveryRoute
   '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -164,6 +172,7 @@ export interface FileRoutesByTo {
   '/mpesa/deposit': typeof MpesaDepositRoute
   '/mpesa/withdraw': typeof MpesaWithdrawRoute
   '/lovable/email/events': typeof LovableEmailEventsRoute
+  '/api/public/hooks/bot-recovery': typeof ApiPublicHooksBotRecoveryRoute
   '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -186,6 +195,7 @@ export interface FileRoutesById {
   '/mpesa/deposit': typeof MpesaDepositRoute
   '/mpesa/withdraw': typeof MpesaWithdrawRoute
   '/lovable/email/events': typeof LovableEmailEventsRoute
+  '/api/public/hooks/bot-recovery': typeof ApiPublicHooksBotRecoveryRoute
   '/api/public/webhooks/cloudpay': typeof ApiPublicWebhooksCloudpayRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/mpesa/deposit'
     | '/mpesa/withdraw'
     | '/lovable/email/events'
+    | '/api/public/hooks/bot-recovery'
     | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/mpesa/deposit'
     | '/mpesa/withdraw'
     | '/lovable/email/events'
+    | '/api/public/hooks/bot-recovery'
     | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -251,6 +263,7 @@ export interface FileRouteTypes {
     | '/mpesa/deposit'
     | '/mpesa/withdraw'
     | '/lovable/email/events'
+    | '/api/public/hooks/bot-recovery'
     | '/api/public/webhooks/cloudpay'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -273,6 +286,7 @@ export interface RootRouteChildren {
   MpesaDepositRoute: typeof MpesaDepositRoute
   MpesaWithdrawRoute: typeof MpesaWithdrawRoute
   LovableEmailEventsRoute: typeof LovableEmailEventsRoute
+  ApiPublicHooksBotRecoveryRoute: typeof ApiPublicHooksBotRecoveryRoute
   ApiPublicWebhooksCloudpayRoute: typeof ApiPublicWebhooksCloudpayRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -414,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksCloudpayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/bot-recovery': {
+      id: '/api/public/hooks/bot-recovery'
+      path: '/api/public/hooks/bot-recovery'
+      fullPath: '/api/public/hooks/bot-recovery'
+      preLoaderRoute: typeof ApiPublicHooksBotRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -433,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   MpesaDepositRoute: MpesaDepositRoute,
   MpesaWithdrawRoute: MpesaWithdrawRoute,
   LovableEmailEventsRoute: LovableEmailEventsRoute,
+  ApiPublicHooksBotRecoveryRoute: ApiPublicHooksBotRecoveryRoute,
   ApiPublicWebhooksCloudpayRoute: ApiPublicWebhooksCloudpayRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
