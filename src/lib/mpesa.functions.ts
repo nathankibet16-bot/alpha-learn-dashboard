@@ -45,7 +45,7 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
     const creditedUsd = Number((data.amount_kes / rate).toFixed(2));
     const internalRef = genRef("MPD");
 
-    // Insert pending row BEFORE calling provider (idempotency anchor)
+    // Insert row in awaiting_customer state BEFORE calling provider (idempotency anchor)
     const { data: inserted, error: insErr } = await supabase.from("mpesa_deposits").insert({
       user_id: userId,
       user_email: profile?.email ?? null,
@@ -56,7 +56,7 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       fee_kes: fee,
       total_paid_kes: total,
       phone,
-      status: "processing",
+      status: "awaiting_customer",
     }).select("id").single();
     if (insErr) throw new Error(insErr.message);
 
@@ -68,6 +68,7 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
     let providerRef: string | null = null;
     let checkoutRequestId: string | null = null;
     let ok = false;
+    let providerError: string | null = null;
     try {
       const res = await fetch(`${CLOUDPAY_BASE}/api/wallet/deposit`, {
         method: "POST",
@@ -85,9 +86,11 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       if (pr) {
         providerRef = (pr.reference as string) || (pr.transaction_id as string) || (pr.id as string) || null;
         checkoutRequestId = (pr.checkout_request_id as string) || (pr.CheckoutRequestID as string) || null;
+        if (!ok) providerError = (pr.message as string) || (pr.error as string) || `Provider returned ${res.status}`;
       }
     } catch (e) {
       providerResponse = { error: e instanceof Error ? e.message : "Provider unreachable" };
+      providerError = "Could not reach payment provider";
       ok = false;
     }
 
@@ -96,10 +99,10 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       checkout_request_id: checkoutRequestId,
       provider_response: providerResponse as never,
       status: ok ? "processing" : "failed",
-      failure_reason: ok ? null : "Provider request failed",
+      failure_reason: ok ? null : providerError,
     }).eq("id", inserted.id);
 
-    if (!ok) throw new Error("Failed to send M-Pesa request. Please try again.");
+    if (!ok) throw new Error(providerError || "Failed to send M-Pesa request. Please try again.");
 
     return {
       deposit_id: inserted.id,
@@ -108,6 +111,7 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       credited_usd: creditedUsd,
     };
   });
+
 
 /** Poll deposit status from our DB (webhook updates it). */
 export const getMpesaDepositStatus = createServerFn({ method: "GET" })

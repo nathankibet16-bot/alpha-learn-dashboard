@@ -43,7 +43,9 @@ function MpesaDepositPage() {
 
   useEffect(() => {
     if (!depositId || status !== "waiting") return;
+    let elapsed = 0;
     pollRef.current = setInterval(async () => {
+      elapsed += 4;
       try {
         const r = await getStatus({ data: { deposit_id: depositId } });
         if (r.credited) {
@@ -53,17 +55,19 @@ function MpesaDepositPage() {
           if (data.user) await syncBalanceFromServer(data.user.id);
           toast.success("Deposit received");
           if (pollRef.current) clearInterval(pollRef.current);
-        } else if (r.status === "failed" || r.status === "cancelled" || r.status === "expired") {
+        } else if (["failed", "cancelled", "expired"].includes(r.status ?? "")) {
           setStatus("failed");
           if (pollRef.current) clearInterval(pollRef.current);
         }
-      } catch { /* ignore */ }
+      } catch { /* ignore transient errors */ }
+      if (elapsed >= 180) {
+        setStatus("failed");
+        if (pollRef.current) clearInterval(pollRef.current);
+      }
     }, 4000);
-    const timeout = setTimeout(() => {
-      if (status === "waiting") { setStatus("failed"); }
-    }, 180000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); clearTimeout(timeout); };
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [depositId, status, getStatus]);
+
 
   const total = amount + fee;
   const creditedUsd = (amount / rate).toFixed(2);
