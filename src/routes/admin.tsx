@@ -267,10 +267,10 @@ function AdminPage() {
           <TableWrap>
             <table className="w-full text-left text-sm">
               <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr><Th>User</Th><Th>Phone</Th><Th>KES</Th><Th>USD Credited</Th><Th>Receipt</Th><Th>Status</Th><Th>Time</Th></tr>
+                <tr><Th>User</Th><Th>Phone</Th><Th>KES</Th><Th>USD Credited</Th><Th>Receipt</Th><Th>Status</Th><Th>Time</Th><Th>Actions</Th></tr>
               </thead>
               <tbody>
-                {mpesaDeposits.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No M-Pesa deposits.</td></tr>}
+                {mpesaDeposits.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No M-Pesa deposits.</td></tr>}
                 {mpesaDeposits.map((d) => (
                   <tr key={d.id} className="border-t border-border">
                     <Td>{d.user_email ?? "—"}</Td>
@@ -280,6 +280,25 @@ function AdminPage() {
                     <Td className="text-xs">{d.mpesa_receipt ?? "—"}</Td>
                     <Td><StatusBadge status={d.status} /></Td>
                     <Td className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleString()}</Td>
+                    <Td>
+                      {d.status === "awaiting_verification" && !d.credited ? (
+                        <div className="flex gap-2">
+                          <button disabled={busyId === d.id} onClick={async () => {
+                            setBusyId(d.id);
+                            const { error } = await supabase.rpc("admin_verify_manual_mpesa_deposit", { _deposit_id: d.id, _approve: true, _reason: null });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast.success("Deposit credited"); void load(); }
+                          }} className="rounded-md bg-emerald-500 px-2 py-1 text-xs font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">Verify</button>
+                          <button disabled={busyId === d.id} onClick={async () => {
+                            const reason = window.prompt("Reason for rejection:") ?? "Rejected";
+                            setBusyId(d.id);
+                            const { error } = await supabase.rpc("admin_verify_manual_mpesa_deposit", { _deposit_id: d.id, _approve: false, _reason: reason });
+                            setBusyId(null);
+                            if (error) toast.error(error.message); else { toast("Rejected"); void load(); }
+                          }} className="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-60">Reject</button>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
                   </tr>
                 ))}
               </tbody>
