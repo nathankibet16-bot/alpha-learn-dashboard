@@ -18,6 +18,9 @@ const MIN = 500;
 const POLL_MS = 3000;
 const QUERY_AFTER_MS = 15000;
 const MANUAL_CHECK_AFTER_MS = 120000;
+const MANUAL_TILL_AFTER_MS = 60000;
+const TILL_NUMBER = "3405451";
+const TILL_NAME = "TUMAME NETWORKS";
 const fmt = (n: number) => n.toLocaleString("en-KE");
 
 function MpesaDepositPage() {
