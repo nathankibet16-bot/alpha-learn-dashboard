@@ -74,6 +74,7 @@ function MpesaDepositPage() {
     let elapsed = 0;
     queryTriggered.current = false;
     setShowManualCheck(false);
+    setShowManualTill(false);
     pollRef.current = setInterval(async () => {
       elapsed += POLL_MS;
       try {
