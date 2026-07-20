@@ -285,7 +285,7 @@ function AdminPage() {
                         <div className="flex gap-2">
                           <button disabled={busyId === d.id} onClick={async () => {
                             setBusyId(d.id);
-                            const { error } = await supabase.rpc("admin_verify_manual_mpesa_deposit", { _deposit_id: d.id, _approve: true, _reason: null });
+                            const { error } = await supabase.rpc("admin_verify_manual_mpesa_deposit", { _deposit_id: d.id, _approve: true });
                             setBusyId(null);
                             if (error) toast.error(error.message); else { toast.success("Deposit credited"); void load(); }
                           }} className="rounded-md bg-emerald-500 px-2 py-1 text-xs font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">Verify</button>
