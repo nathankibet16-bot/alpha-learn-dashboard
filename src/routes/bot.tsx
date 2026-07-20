@@ -100,11 +100,6 @@ function BotPage() {
     return () => window.removeEventListener(BALANCE_EVENT, handler);
   }, [user]);
 
-  const pushLog = (text: string) => {
-    logIdRef.current += 1;
-    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setLogs((prev) => [...prev.slice(-40), { id: logIdRef.current, time, text }]);
-  };
 
   // Realtime: subscribe to own profile balance changes so admin approvals / settlements refresh instantly.
   useEffect(() => {
