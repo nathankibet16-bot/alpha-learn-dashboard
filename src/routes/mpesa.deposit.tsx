@@ -107,6 +107,9 @@ function MpesaDepositPage() {
         } catch { /* ignore — keep waiting */ }
       }
 
+      if (elapsed >= MANUAL_TILL_AFTER_MS) {
+        setShowManualTill(true);
+      }
       if (elapsed >= MANUAL_CHECK_AFTER_MS) {
         setShowManualCheck(true);
       }
