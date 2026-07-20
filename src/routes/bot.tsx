@@ -359,20 +359,24 @@ function BotPage() {
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={handleStart}
-                  disabled={running}
+                  disabled={running || settling}
                   className="flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Play className="h-4 w-4" /> Start
                 </button>
                 <button
                   onClick={handleStop}
-                  disabled={!running}
+                  disabled={!running || settling}
                   className="flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Square className="h-4 w-4" /> Stop
+                  {settling ? <><Loader2 className="h-4 w-4 animate-spin" /> Finalizing…</> : <><Square className="h-4 w-4" /> Stop</>}
                 </button>
               </div>
+              {settling && (
+                <p className="mt-2 text-center text-xs text-emerald-400">Finalizing session results…</p>
+              )}
             </div>
+
 
             <TradingViewChart symbol="BINANCE:BTCUSDT" title="Bitcoin · BTC/USDT" />
 
