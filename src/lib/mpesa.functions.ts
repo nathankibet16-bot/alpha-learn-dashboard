@@ -19,6 +19,15 @@ function genRef(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
 }
 
+function pickString(obj: Record<string, unknown> | null, ...keys: string[]): string | null {
+  if (!obj) return null;
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
 const DepositInput = z.object({
   amount_kes: z.number().int().positive(),
   phone: z.string().min(9),
@@ -45,7 +54,8 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
     const creditedUsd = Number((data.amount_kes / rate).toFixed(2));
     const internalRef = genRef("MPD");
 
-    // Insert row in awaiting_customer state BEFORE calling provider (idempotency anchor)
+    // Insert row in awaiting_customer state BEFORE calling provider (idempotency anchor).
+    // credited defaults to false. Uses user's RLS client (INSERT policy allows this).
     const { data: inserted, error: insErr } = await supabase.from("mpesa_deposits").insert({
       user_id: userId,
       user_email: profile?.email ?? null,
@@ -60,13 +70,22 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
     }).select("id").single();
     if (insErr) throw new Error(insErr.message);
 
-    // Call CloudPay
+    console.log("[mpesa.initiate] created deposit", {
+      deposit_id: inserted.id,
+      internal_reference: internalRef,
+      user_id: userId,
+      amount_kes: data.amount_kes,
+      total_paid_kes: total,
+    });
+
+    // Call CloudPay STK Push
     const apiKey = process.env.CLOUDPAY_API_KEY;
     if (!apiKey) throw new Error("Payment provider not configured");
 
     let providerResponse: unknown = null;
     let providerRef: string | null = null;
     let checkoutRequestId: string | null = null;
+    let merchantRequestId: string | null = null;
     let ok = false;
     let providerError: string | null = null;
     try {
@@ -83,24 +102,43 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       try { providerResponse = JSON.parse(text); } catch { providerResponse = { raw: text }; }
       ok = res.ok;
       const pr = providerResponse as Record<string, unknown> | null;
-      if (pr) {
-        providerRef = (pr.reference as string) || (pr.transaction_id as string) || (pr.id as string) || null;
-        checkoutRequestId = (pr.checkout_request_id as string) || (pr.CheckoutRequestID as string) || null;
-        if (!ok) providerError = (pr.message as string) || (pr.error as string) || `Provider returned ${res.status}`;
-      }
+      // Look at top-level AND nested "data" object (CloudPay sometimes wraps).
+      const nested = (pr?.data && typeof pr.data === "object") ? pr.data as Record<string, unknown> : null;
+      providerRef = pickString(pr, "reference", "transaction_id", "id", "provider_reference")
+                 ?? pickString(nested, "reference", "transaction_id", "id", "provider_reference");
+      checkoutRequestId = pickString(pr, "checkout_request_id", "CheckoutRequestID", "checkoutRequestID")
+                       ?? pickString(nested, "checkout_request_id", "CheckoutRequestID", "checkoutRequestID");
+      merchantRequestId = pickString(pr, "merchant_request_id", "MerchantRequestID", "merchantRequestID")
+                       ?? pickString(nested, "merchant_request_id", "MerchantRequestID", "merchantRequestID");
+      if (!ok) providerError = pickString(pr, "message", "error") ?? `Provider returned ${res.status}`;
     } catch (e) {
       providerResponse = { error: e instanceof Error ? e.message : "Provider unreachable" };
       providerError = "Could not reach payment provider";
       ok = false;
     }
 
-    await supabase.from("mpesa_deposits").update({
+    console.log("[mpesa.initiate] CloudPay response", {
+      internal_reference: internalRef,
+      ok,
       provider_reference: providerRef,
       checkout_request_id: checkoutRequestId,
-      provider_response: providerResponse as never,
-      status: ok ? "processing" : "failed",
-      failure_reason: ok ? null : providerError,
-    }).eq("id", inserted.id);
+      merchant_request_id: merchantRequestId,
+      error: providerError,
+    });
+
+    // Persist provider IDs via SECURITY DEFINER RPC (bypasses missing UPDATE policy).
+    const { error: attachErr } = await supabase.rpc("attach_mpesa_provider_ids", {
+      _internal_reference: internalRef,
+      _provider_reference: providerRef as unknown as string,
+      _checkout_request_id: checkoutRequestId as unknown as string,
+      _merchant_request_id: merchantRequestId as unknown as string,
+      _provider_response: providerResponse as never,
+      _status: ok ? "processing" : "failed",
+      _failure_reason: (ok ? null : providerError) as unknown as string,
+    });
+    if (attachErr) {
+      console.error("[mpesa.initiate] attach_mpesa_provider_ids failed", attachErr);
+    }
 
     if (!ok) throw new Error(providerError || "Failed to send M-Pesa request. Please try again.");
 
@@ -109,6 +147,7 @@ export const initiateMpesaDeposit = createServerFn({ method: "POST" })
       internal_reference: internalRef,
       phone_masked: `${phone.slice(0, 6)}****${phone.slice(-3)}`,
       credited_usd: creditedUsd,
+      amount_kes: data.amount_kes,
     };
   });
 
@@ -120,11 +159,109 @@ export const getMpesaDepositStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
       .from("mpesa_deposits")
-      .select("status,credited,mpesa_receipt,failure_reason")
+      .select("status,credited,mpesa_receipt,failure_reason,amount_kes")
       .eq("id", data.deposit_id)
       .eq("user_id", context.userId)
       .maybeSingle();
-    return row ?? { status: "unknown", credited: false, mpesa_receipt: null, failure_reason: null };
+    return row ?? { status: "unknown", credited: false, mpesa_receipt: null, failure_reason: null, amount_kes: 0 };
+  });
+
+/**
+ * Backend fallback: if the webhook hasn't arrived, ask CloudPay for the
+ * transaction status and, if successful, credit the wallet. Never calls
+ * CloudPay from the browser. Idempotent — credit RPC returns silently if
+ * already credited.
+ */
+export const queryMpesaDepositStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ deposit_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: dep } = await context.supabase
+      .from("mpesa_deposits")
+      .select("id,internal_reference,provider_reference,checkout_request_id,status,credited,mpesa_receipt")
+      .eq("id", data.deposit_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (!dep) return { ok: false, reason: "not_found" as const };
+
+    // If already terminal, nothing to do.
+    if (dep.credited) return { ok: true, credited: true, status: "completed" as const };
+    if (["failed", "cancelled", "expired"].includes(dep.status)) {
+      return { ok: true, credited: false, status: dep.status as "failed" | "cancelled" | "expired" };
+    }
+
+    const apiKey = process.env.CLOUDPAY_API_KEY;
+    if (!apiKey) return { ok: false, reason: "not_configured" as const };
+
+    // Try the reference-based status endpoints CloudPay commonly exposes.
+    const candidates = [
+      `${CLOUDPAY_BASE}/api/wallet/deposit/status?reference=${encodeURIComponent(dep.internal_reference)}`,
+      `${CLOUDPAY_BASE}/api/wallet/deposit/${encodeURIComponent(dep.internal_reference)}`,
+      dep.checkout_request_id
+        ? `${CLOUDPAY_BASE}/api/wallet/deposit/status?checkout_request_id=${encodeURIComponent(dep.checkout_request_id)}`
+        : null,
+    ].filter((u): u is string => !!u);
+
+    let payload: Record<string, unknown> | null = null;
+    let lastStatus = 0;
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "X-API-Key": apiKey, Accept: "application/json" },
+        });
+        lastStatus = res.status;
+        const text = await res.text();
+        try { payload = JSON.parse(text) as Record<string, unknown>; } catch { payload = { raw: text }; }
+        if (res.ok) break;
+      } catch (e) {
+        console.error("[mpesa.query] fetch failed", url, e);
+      }
+    }
+
+    console.log("[mpesa.query] CloudPay status", {
+      internal_reference: dep.internal_reference,
+      http_status: lastStatus,
+      payload,
+    });
+
+    if (!payload) return { ok: false, reason: "unreachable" as const };
+
+    const nested = (payload.data && typeof payload.data === "object") ? payload.data as Record<string, unknown> : null;
+    const source = nested ?? payload;
+    const providerStatus = String(source.status ?? source.transaction_status ?? "").toLowerCase();
+    const receipt = pickString(source, "mpesa_receipt", "receipt", "MpesaReceiptNumber");
+    const provRef = pickString(source, "transaction_id", "provider_reference", "id");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (["success", "completed", "paid", "successful"].includes(providerStatus)) {
+      const { error } = await supabaseAdmin.rpc("credit_mpesa_deposit", {
+        _internal_reference: dep.internal_reference,
+        _mpesa_receipt: receipt || `RCP-${Date.now()}`,
+        _provider_reference: provRef || "",
+        _provider_response: payload as never,
+      });
+      if (error) {
+        console.error("[mpesa.query] credit failed", error);
+        return { ok: false, reason: "credit_failed" as const };
+      }
+      console.log("[mpesa.query] wallet credited via status query", {
+        internal_reference: dep.internal_reference,
+      });
+      return { ok: true, credited: true, status: "completed" as const };
+    }
+
+    if (["failed", "cancelled", "canceled", "expired", "error"].includes(providerStatus)) {
+      await supabaseAdmin.rpc("fail_mpesa_deposit", {
+        _internal_reference: dep.internal_reference,
+        _reason: pickString(source, "reason", "message") ?? providerStatus,
+        _response: payload as never,
+      });
+      return { ok: true, credited: false, status: (providerStatus === "canceled" ? "cancelled" : providerStatus) as "failed" | "cancelled" | "expired" };
+    }
+
+    return { ok: true, credited: false, status: "processing" as const };
   });
 
 const WithdrawInput = z.object({
