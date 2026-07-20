@@ -301,6 +301,66 @@ function MpesaDepositPage() {
                     Check payment status
                   </button>
                 )}
+
+                {showManualTill && !manualOpen && (
+                  <div className="mt-4 w-full space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-left">
+                    <p className="text-center text-sm font-semibold text-emerald-300">Pay manually using M-Pesa Till</p>
+                    <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                      <li>Open M-Pesa.</li>
+                      <li>Select <span className="text-foreground">Lipa na M-Pesa</span>.</li>
+                      <li>Select <span className="text-foreground">Buy Goods and Services</span>.</li>
+                      <li>Enter Till Number: <span className="font-mono font-semibold text-emerald-300">{TILL_NUMBER}</span></li>
+                      <li>Confirm the Till name is <span className="font-semibold text-foreground">{TILL_NAME}</span>.</li>
+                      <li>Enter the exact deposit amount (KES {fmt(amount)}).</li>
+                      <li>Complete payment and copy the M-Pesa transaction code.</li>
+                    </ol>
+                    <button onClick={openManualForm}
+                      className="w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-black hover:bg-emerald-400">
+                      Already paid? Verify deposit
+                    </button>
+                  </div>
+                )}
+
+                {manualOpen && (
+                  <div className="mt-4 w-full space-y-3 rounded-xl border border-border bg-zinc-950 p-4 text-left">
+                    <p className="text-center text-sm font-semibold">Verify M-Pesa payment</p>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">M-Pesa transaction code</span>
+                      <input value={manualCode} onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                        placeholder="e.g. QK7A2BXYZ1" maxLength={24}
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 font-mono text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">Phone number</span>
+                      <input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)}
+                        placeholder="0712 345 678"
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] uppercase tracking-wide text-muted-foreground">Amount paid (KES)</span>
+                      <input type="number" min={MIN} value={manualAmount || ""}
+                        onChange={(e) => setManualAmount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                        className="w-full rounded-lg border border-border bg-black px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+                    </label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setManualOpen(false)}
+                        className="flex-1 rounded-lg border border-border py-2 text-xs text-muted-foreground">Cancel</button>
+                      <button onClick={submitManualForm} disabled={manualSubmitting}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-60">
+                        {manualSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        Submit for verification
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {status === "manual_submitted" && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+                <p className="font-semibold text-emerald-300">Deposit submitted</p>
+                <p className="text-sm text-muted-foreground">Your payment will be verified and reflected in your account shortly.</p>
+                <Link to="/dashboard" className="mt-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black">Back to dashboard</Link>
               </div>
             )}
             {status === "success" && (
